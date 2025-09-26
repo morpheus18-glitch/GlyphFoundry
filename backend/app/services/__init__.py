@@ -1,5 +1,12 @@
-"""Native service helpers backed by Rust kernels."""
+"""Service exports."""
+from .embedding_service import EmbeddingService
+from .node_service import NodeService
+from .quantum_service import quantum_registry
+from .telemetry_service import telemetry_service
 
-from .native import denoise_frame
-
-__all__ = ["denoise_frame"]
+__all__ = [
+    "EmbeddingService",
+    "NodeService",
+    "quantum_registry",
+    "telemetry_service",
+]
