@@ -1,0 +1,21 @@
+[package]
+name = "qce_kernels_wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+qce_kernels = { path = "../../" }
+
+[features]
+console_error_panic_hook = []
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[package.metadata.wasm-pack.profile.dev]
+wasm-opt = false

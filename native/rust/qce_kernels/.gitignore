@@ -1,0 +1,7 @@
+/target
+bindings/python/target
+bindings/python/__pycache__/
+bindings/python/*.pyd
+bindings/python/*.so
+bindings/python/*.dll
+bindings/wasm/target
