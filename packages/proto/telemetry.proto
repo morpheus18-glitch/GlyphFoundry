@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package quantum.nexus;
+
+message WorkerSnapshot {
+  string worker_id = 1;
+  string status = 2;
+  double cpu = 3;
+  double memory = 4;
+  uint64 jobs_processed = 5;
+}
+
+message FleetSnapshot {
+  repeated WorkerSnapshot snapshots = 1;
+  string generated_at = 2;
+}
