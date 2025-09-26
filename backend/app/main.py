@@ -1,10 +1,14 @@
 import importlib
 import logging
-from fastapi import FastAPI, Depends, Request, Query
+from datetime import datetime
+from typing import Any, Dict
+
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.gzip import GZipMiddleware
-from starlette.responses import PlainTextResponse, JSONResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.responses import JSONResponse, PlainTextResponse
 
 # Logging config (fallback to basic if module missing)
 try:
@@ -14,8 +18,9 @@ except Exception:
         logging.basicConfig(level=logging.INFO)
 
 from settings import settings
-from db import get_db
+from db import get_db, session_scope
 from exports import export_graph_json, export_tags_json
+from kafka_bus import produce
 # optional: create minimal schema if migrations/init haven’t run
 try:
     from ensure_schema import ensure_min_schema  # only if you created it
@@ -66,8 +71,8 @@ def _startup():
     # light, non-blocking boot tasks
     if ensure_min_schema is not None:
         try:
-            db = next(get_db())
-            ensure_min_schema(db)
+            with session_scope() as db:
+                ensure_min_schema(db)
         except Exception as e:
             logging.getLogger(__name__).warning("ensure_min_schema skipped: %s", e)
 
@@ -82,39 +87,51 @@ async def unhandled_exc(_: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"error": "internal", "detail": str(exc)})
 
 # ---------------- Public endpoints ----------------
+def _build_graph_payload(
+    db: Session,
+    window_minutes: int,
+    limit_nodes: int,
+    limit_edges: int,
+) -> Dict[str, Any]:
+    """Fetch graph payload applying clamping and fallback windows."""
+
+    limit_nodes = min(limit_nodes, settings.graph3d.max_nodes)
+    limit_edges = min(limit_edges, settings.graph3d.max_edges)
+
+    payload = export_graph_json(db, limit_nodes, limit_edges, window_minutes)
+    stats = payload.setdefault("stats", {})
+
+    if not stats.get("edge_count") and not stats.get("node_count"):
+        for fallback_window in settings.graph3d.fallback_windows:
+            if fallback_window == window_minutes:
+                continue
+            fallback_payload = export_graph_json(db, limit_nodes, limit_edges, fallback_window)
+            fallback_stats = fallback_payload.get("stats", {})
+            if fallback_stats.get("edge_count") or fallback_stats.get("node_count"):
+                fallback_stats["fallback_used"] = fallback_window
+                payload = fallback_payload
+                stats = payload.setdefault("stats", fallback_stats)
+                break
+
+    stats.setdefault("window_minutes", window_minutes)
+    stats["limit_nodes"] = limit_nodes
+    stats["limit_edges"] = limit_edges
+    return payload
+
+
 @app.get("/graph3d/data")
 def graph3d_data(
-    window_minutes: int = Query(60, alias="w", ge=1),
-    limit_nodes: int = Query(300, alias="ln", ge=1),
-    limit_edges: int = Query(1500, alias="le", ge=1),
+    window_minutes: int = Query(settings.graph3d.default_window, alias="w", ge=1),
+    limit_nodes: int = Query(settings.graph3d.default_nodes, alias="ln", ge=1),
+    limit_edges: int = Query(settings.graph3d.default_edges, alias="le", ge=1),
     db: Session = Depends(get_db),
 ):
-    return export_graph_json(db, limit_nodes, limit_edges, window_minutes)
+    return _build_graph_payload(db, window_minutes, limit_nodes, limit_edges)
+
 
 @app.get("/tags/data")
 def tags_data(db: Session = Depends(get_db)):
     return export_tags_json(db)
-
-# --- Override /graph3d/data with tunables + fallback ---
-@app.get("/graph3d/data")
-def graph3d_data(
-    w: int = Query(settings.graph3d.default_window, alias="w", ge=1),
-    ln: int = Query(settings.graph3d.default_nodes, alias="ln", ge=1),
-    le: int = Query(settings.graph3d.default_edges, alias="le", ge=1),
-    db: Session = Depends(get_db),
-):
-    # clamp
-    ln = min(ln, settings.graph3d.max_nodes)
-    le = min(le, settings.graph3d.max_edges)
-
-    payload = export_graph_json(db, ln, le, w)
-    if payload["stats"]["edge_count"] == 0 and payload["stats"]["node_count"] == 0:
-        for win in settings.graph3d.fallback_windows:
-            payload = export_graph_json(db, ln, le, win)
-            if payload["stats"]["edge_count"] > 0:
-                payload["stats"]["fallback_used"] = win
-                break
-    return payload
 
 @app.get("/graph3d/settings")
 def graph3d_settings():
@@ -136,16 +153,16 @@ templates = Jinja2Templates(directory=str(pathlib.Path(__file__).parent / "templ
 @app.get("/graph3d/view")
 def graph3d_view(
     request: Request,
-    w: int = Query(settings.graph3d.default_window, alias="w", ge=1),
-    ln: int = Query(settings.graph3d.default_nodes, alias="ln", ge=1),
-    le: int = Query(settings.graph3d.default_edges, alias="le", ge=1),
+    window_minutes: int = Query(settings.graph3d.default_window, alias="w", ge=1),
+    limit_nodes: int = Query(settings.graph3d.default_nodes, alias="ln", ge=1),
+    limit_edges: int = Query(settings.graph3d.default_edges, alias="le", ge=1),
     db: Session = Depends(get_db),
 ):
-    payload = export_graph_json(db, ln, le, w)
+    payload = _build_graph_payload(db, window_minutes, limit_nodes, limit_edges)
     return templates.TemplateResponse("graph3d.html", {"request": request, "data": payload})
 
 @app.post("/pipeline/trigger/{worker_name}")
-def trigger_worker(worker_name: str, db=Depends(get_db)):
+def trigger_worker(worker_name: str, db: Session = Depends(get_db)):
     """Trigger a specific worker manually"""
     topic_map = {
         "nlp_extract": settings.kafka.ingest_topic,
@@ -154,19 +171,25 @@ def trigger_worker(worker_name: str, db=Depends(get_db)):
         "tag_suggester": settings.kafka.candidates_topic,
         "curation_worker": settings.kafka.curation_topic
     }
-    
+
     if worker_name not in topic_map:
         raise HTTPException(400, f"Unknown worker: {worker_name}")
-        
+
     # Trigger the worker by sending a test message
-    produce(topic_map[worker_name], {"type": "manual_trigger", "timestamp": datetime.utcnow().isoformat()})
+    dispatched = produce(
+        topic_map[worker_name],
+        {"type": "manual_trigger", "timestamp": datetime.utcnow().isoformat()},
+    )
+    if not dispatched:
+        raise HTTPException(503, "Unable to dispatch trigger event")
+
     return {"status": "triggered", "worker": worker_name}
 
 @app.get("/graph/stats")
-def get_graph_stats(db=Depends(get_db)):
+def get_graph_stats(db: Session = Depends(get_db)):
     """Get detailed graph statistics"""
     stats = db.execute(text("""
-        SELECT 
+        SELECT
             (SELECT COUNT(*) FROM nodes WHERE kind='message') as message_count,
             (SELECT COUNT(*) FROM nodes WHERE kind='glyph') as glyph_count,
             (SELECT COUNT(*) FROM edges) as edge_count,
@@ -174,10 +197,10 @@ def get_graph_stats(db=Depends(get_db)):
                 SELECT COUNT(*) as degree FROM edges GROUP BY src_id
             ) t) as avg_degree
     """)).first()
-    
+
     return {
-        "message_count": stats[0] or 0,
-        "glyph_count": stats[1] or 0,
-        "edge_count": stats[2] or 0,
-        "avg_degree": float(stats[3] or 0)
+        "message_count": (stats[0] if stats and stats[0] is not None else 0),
+        "glyph_count": (stats[1] if stats and stats[1] is not None else 0),
+        "edge_count": (stats[2] if stats and stats[2] is not None else 0),
+        "avg_degree": float(stats[3]) if stats and stats[3] is not None else 0.0,
     }
