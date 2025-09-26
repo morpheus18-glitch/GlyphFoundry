@@ -1,0 +1,28 @@
+openapi: 3.1.0
+info:
+  title: Quantum Nexus API
+  version: 1.0.0-alpha
+paths:
+  /api/v1/healthz:
+    get:
+      summary: Health probe
+      responses:
+        '200':
+          description: Health status
+  /api/v1/embeddings:
+    post:
+      summary: Create embeddings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                texts:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Embedding response
