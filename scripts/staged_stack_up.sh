@@ -18,6 +18,11 @@ elif command -v docker-compose >/dev/null 2>&1; then
   COMPOSE_BIN=(docker-compose)
 
 
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE_BIN=(docker-compose)
+
+
+
 else
   COMPOSE_BIN=(docker compose)
 fi
@@ -26,7 +31,11 @@ if ! "${COMPOSE_BIN[@]}" version >/dev/null 2>&1; then
 
   echo "docker-compose or docker compose is required" >&2
 
+
+  echo "docker-compose or docker compose is required" >&2
+
   echo "docker compose is required (Docker 20.10+ with Compose V2)" >&2
+
 
   exit 1
 fi
@@ -40,6 +49,12 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
     exit 1
   fi
 fi
+
+
+BOOTSTRAP_PYTHON="$PYTHON_BIN"
+STAGED_STACK_VENV_DIR=${STAGED_STACK_VENV_DIR:-"$ROOT_DIR/.venv/staged-stack"}
+
+
 
 COMPOSE_FILES=(-f "$ROOT_DIR/docker-compose.yml")
 for override in docker-compose.override.yml edge-ports.override.yml edge-ssl.override.yml; do
@@ -64,7 +79,6 @@ command_string() {
 }
 
 
-
 compose() {
   "${COMPOSE_BIN[@]}" "${COMPOSE_FILES[@]}" "$@"
 }
@@ -84,7 +98,6 @@ run_compose() {
   compose "$@"
 }
 
-=======
 run() {
   echo "➤ $*"
   "$@"
@@ -95,6 +108,23 @@ ensure_local_requirements() {
   if [[ ${SKIP_PIP_INSTALL:-0} == 1 ]]; then
     return
   fi
+
+
+  local venv_dir="$STAGED_STACK_VENV_DIR"
+  if [[ ! -d "$venv_dir" ]]; then
+    echo "Creating Python virtual environment for staged tests: $venv_dir"
+    run "$BOOTSTRAP_PYTHON" -m venv "$venv_dir"
+  fi
+
+  PYTHON_BIN="$venv_dir/bin/python"
+  local pip_bin="$venv_dir/bin/pip"
+  if [[ ! -x "$pip_bin" ]]; then
+    echo "virtual environment at $venv_dir is missing pip" >&2
+    exit 1
+  fi
+
+
+
   local modules=(psutil redis prometheus_client)
   local packages=()
   for module in "${modules[@]}"; do
@@ -111,6 +141,10 @@ ensure_local_requirements() {
     esac
   done
   if ((${#packages[@]})); then
+
+    echo "Installing python dependencies for local test stage into $venv_dir: ${packages[*]}"
+    run "$pip_bin" install "${packages[@]}"
+
     echo "Installing python dependencies for local test stage: ${packages[*]}"
     run "$PYTHON_BIN" -m pip install "${packages[@]}"
   fi
@@ -152,14 +186,23 @@ run_compose up -d --wait gf_postgres gf_redpanda minio minio_init
 run_compose exec gf_postgres pg_isready -U gf_user -d glyph_foundry
 run_compose exec gf_redpanda rpk cluster health
 
+
+run_compose up -d --wait gf_postgres gf_redpanda minio minio_init
+run_compose exec gf_postgres pg_isready -U gf_user -d glyph_foundry
+run_compose exec gf_redpanda rpk cluster health
+
 run compose up -d --wait gf_postgres gf_redpanda minio minio_init
 run compose exec gf_postgres pg_isready -U gf_user -d glyph_foundry
 run compose exec gf_redpanda rpk cluster health
+
 
 run curl -sf http://127.0.0.1:9000/minio/health/ready
 
 # Stage 2: FastAPI backend.
 section "Stage 2 ▸ Backend application"
+
+
+
 
 run_compose up -d --wait backend
 run_compose exec backend curl -sf http://localhost:8000/healthz
@@ -207,5 +250,6 @@ echo "Stack bring-up complete. Containers are running under the $(basename "$ROO
 
 echo "Use '$(compose_command_string down)' to stop the stack when finished."
 
-echo "Use 'docker compose -f docker-compose.yml down' to stop the stack when finished."
+echo "Use '$(compose_command_string down)' to stop the stack when finished."
 
+echo "Use 'docker compose -f docker-compose.yml down' to stop the stack when finished."
