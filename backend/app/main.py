@@ -1,10 +1,12 @@
 import importlib
 import logging
-from fastapi import FastAPI, Depends, Request, Query
+from datetime import datetime
+from fastapi import FastAPI, Depends, Request, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 # Logging config (fallback to basic if module missing)
 try:
@@ -16,6 +18,7 @@ except Exception:
 from settings import settings
 from db import get_db
 from exports import export_graph_json, export_tags_json
+from kafka_bus import produce
 # optional: create minimal schema if migrations/init haven’t run
 try:
     from ensure_schema import ensure_min_schema  # only if you created it
@@ -144,7 +147,7 @@ def graph3d_view(
     payload = export_graph_json(db, ln, le, w)
     return templates.TemplateResponse("graph3d.html", {"request": request, "data": payload})
 
-@app.post("/pipeline/trigger/{worker_name}")
+@app.post("/pipeline/trigger/{worker_name}", status_code=202)
 def trigger_worker(worker_name: str, db=Depends(get_db)):
     """Trigger a specific worker manually"""
     topic_map = {
@@ -154,19 +157,29 @@ def trigger_worker(worker_name: str, db=Depends(get_db)):
         "tag_suggester": settings.kafka.candidates_topic,
         "curation_worker": settings.kafka.curation_topic
     }
-    
+
     if worker_name not in topic_map:
-        raise HTTPException(400, f"Unknown worker: {worker_name}")
-        
+        raise HTTPException(status_code=400, detail=f"Unknown worker: {worker_name}")
+
     # Trigger the worker by sending a test message
-    produce(topic_map[worker_name], {"type": "manual_trigger", "timestamp": datetime.utcnow().isoformat()})
-    return {"status": "triggered", "worker": worker_name}
+    triggered = produce(
+        topic_map[worker_name],
+        {"type": "manual_trigger", "timestamp": datetime.utcnow().isoformat()},
+    )
+    if not triggered:
+        raise HTTPException(status_code=503, detail="Kafka producer unavailable")
+
+    return {
+        "status": "triggered",
+        "worker": worker_name,
+        "topic": topic_map[worker_name],
+    }
 
 @app.get("/graph/stats")
 def get_graph_stats(db=Depends(get_db)):
     """Get detailed graph statistics"""
     stats = db.execute(text("""
-        SELECT 
+        SELECT
             (SELECT COUNT(*) FROM nodes WHERE kind='message') as message_count,
             (SELECT COUNT(*) FROM nodes WHERE kind='glyph') as glyph_count,
             (SELECT COUNT(*) FROM edges) as edge_count,
@@ -174,10 +187,19 @@ def get_graph_stats(db=Depends(get_db)):
                 SELECT COUNT(*) as degree FROM edges GROUP BY src_id
             ) t) as avg_degree
     """)).first()
-    
+
+    if stats is None:
+        return {
+            "message_count": 0,
+            "glyph_count": 0,
+            "edge_count": 0,
+            "avg_degree": 0.0,
+        }
+
+    message_count, glyph_count, edge_count, avg_degree = stats
     return {
-        "message_count": stats[0] or 0,
-        "glyph_count": stats[1] or 0,
-        "edge_count": stats[2] or 0,
-        "avg_degree": float(stats[3] or 0)
+        "message_count": message_count or 0,
+        "glyph_count": glyph_count or 0,
+        "edge_count": edge_count or 0,
+        "avg_degree": float(avg_degree or 0),
     }
