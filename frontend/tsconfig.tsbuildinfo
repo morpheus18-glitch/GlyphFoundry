@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/NeuralKnowledgeNetwork.tsx","./src/components/TagsTable.tsx","./src/types/global.d.ts","./src/workers/force3d.worker.ts","./vite.config.ts"],"version":"5.9.2"}

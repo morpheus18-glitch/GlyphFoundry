@@ -1,0 +1,84 @@
+
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+  <meta charset="utf-8" />
+  <title>Glyph Foundry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+</head>
+<body>
+  <header class="app-header glass">
+    <div class="brand">
+      <span class="logo-dot"></span>
+      <span class="brand-text">Glyph Foundry</span>
+    </div>
+    <nav class="nav">
+      <a class="nav-link" href="/">Home</a>
+      <a class="nav-link" href="/messages" target="_blank" rel="noopener">Messages</a>
+      <a class="nav-link" href="/glyphs" target="_blank" rel="noopener">Glyphs</a>
+      <a class="nav-link" href="/graph3d/data" target="_blank" rel="noopener">Graph JSON</a>
+      <a class="nav-link" href="/tags/data" target="_blank" rel="noopener">Tags</a>
+      <a class="nav-link" href="/busz" target="_blank" rel="noopener">Bus</a>
+    </nav>
+    <div class="header-actions">
+      <button id="themeToggle" class="btn btn-ghost" aria-label="Toggle theme">⌘</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card elevate">
+      <div class="card-header">
+        <h1 class="h1">Pipeline</h1>
+        <span class="badge badge-live">live</span>
+      </div>
+      <div class="grid grid-2">
+        <div>
+          <ol class="list">
+            <li>POST <code>/produce/message</code> → <code>nlp.ingest</code></li>
+            <li>NLP → embeddings → <code>nlp.candidates</code></li>
+            <li>Linker → edges → <code>curation.out</code></li>
+            <li>Tags → proposals/decisions</li>
+            <li>Layout → <code>graph_coords</code></li>
+          </ol>
+        </div>
+        <div>
+          <div class="stat">
+            <div class="stat-title">S3 (MinIO)</div>
+            <div class="stat-value">gf-exports</div>
+            <div class="stat-desc"><a href="http://localhost:9001" target="_blank" rel="noopener">Console</a></div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Brokers</div>
+            <div class="stat-value">Redpanda</div>
+            <div class="stat-desc"><code>localhost:19092</code></div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" target="_blank" rel="noopener" href="/healthz">Health</a>
+        <a class="btn btn-outline" target="_blank" rel="noopener" href="/busz">Bus</a>
+        <a class="btn btn-subtle" target="_blank" rel="noopener" href="/graph3d/data">Graph</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <small>© {{ 2025 }} Glyph Foundry</small>
+  </footer>
+
+  <script>
+    (function() {
+      const root = document.documentElement;
+      const btn  = document.getElementById('themeToggle');
+      const key  = 'theme';
+      const apply = (mode) => { root.setAttribute('data-theme', mode); localStorage.setItem(key, mode); };
+      const next = (cur) => ({ light:'dark', dark:'system', system:'light' }[cur] || 'light');
+      const init = () => apply(localStorage.getItem(key) || 'system');
+      btn.addEventListener('click', () => apply(next(root.getAttribute('data-theme'))));
+      init();
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (localStorage.getItem(key)==='system') apply('system'); });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+
+import os
+from fastapi import FastAPI
+from fastapi import APIRouter, Request, Depends, Query, Body
+from app.routes.health import router as health_router
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.exceptions import HTTPException
+from fastapi.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
+from sqlalchemy import text as T
+from .storage import get_db
+from .kafka_bus import bus_health, produce
+from .exports import export_graph_json, export_tags_json
+
+app = FastAPI(title="Glyph Foundry", version=os.getenv("GF_VERSION","0.1.0"))
+app.add_middleware(GZipMiddleware, minimum_size=2048)
+app.add_middleware(CORSMiddleware,
+    allow_origins=os.getenv("CORS_ALLOW_ORIGINS","*").split(","),
+    allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+@app.get("/healthz", response_class=PlainTextResponse)
+def healthz(): return "ok"
+
+@app.get("/busz", response_class=JSONResponse)
+def busz(): return JSONResponse(bus_health())
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse("base.html", {"request": request})
+
+INGEST_TOPIC = os.getenv("INGEST_TOPIC","nlp.ingest")
+GLYPH_TOPIC  = os.getenv("GLYPH_TOPIC","glyphs.created")
+
+@app.get("/messages", response_class=JSONResponse)
+def get_messages(limit:int=Query(50, ge=1, le=500), db=Depends(get_db)):
+    rows = db.execute(T("""
+      SELECT id::text id, content, summary, EXTRACT(EPOCH FROM created_at)::bigint ts
+      FROM messages ORDER BY created_at DESC LIMIT :l
+    """), {"l":limit}).mappings().all()
+    return {"items":[dict(r) for r in rows]}
+
+@app.post("/messages", response_class=JSONResponse, status_code=201)
+def create_message(payload:dict=Body(...), db=Depends(get_db)):
+    content = (payload.get("content") or "").strip()
+    if not content: raise HTTPException(400, "content required")
+    row = db.execute(T(
+      "INSERT INTO messages (content,summary) VALUES (:c,:s) RETURNING id::text"
+    ), {"c":content, "s":payload.get("summary")}).first()
+    return {"id": row[0], "status": "created"}
+
+@app.post("/produce/message", response_class=JSONResponse, status_code=202)
+def produce_message(payload:dict=Body(...), db=Depends(get_db)):
+    res = create_message(payload, db)
+    ok = produce(INGEST_TOPIC, {"type":"message.created","id":res["id"],"content":payload.get("content"),"summary":payload.get("summary")}, key=res["id"])
+    return {"id": res["id"], "published": ok}
+
+@app.get("/glyphs", response_class=JSONResponse)
+def get_glyphs(limit:int=Query(50, ge=1, le=500), db=Depends(get_db)):
+    rows = db.execute(T("""
+      SELECT id::text id, name, summary, EXTRACT(EPOCH FROM created_at)::bigint ts
+      FROM glyphs ORDER BY created_at DESC LIMIT :l
+    """), {"l":limit}).mappings().all()
+    return {"items":[dict(r) for r in rows]}
+
+@app.post("/glyphs", response_class=JSONResponse, status_code=201)
+def create_glyph(payload:dict=Body(...), db=Depends(get_db)):
+    name = (payload.get("name") or "").strip()
+    if not name: raise HTTPException(400, "name required")
+    row = db.execute(T(
+      "INSERT INTO glyphs (name,summary) VALUES (:n,:s) RETURNING id::text"
+    ), {"n":name, "s":payload.get("summary")}).first()
+    return {"id": row[0], "status": "created"}
+
+@app.post("/produce/glyph", response_class=JSONResponse, status_code=202)
+def produce_glyph(payload:dict=Body(...), db=Depends(get_db)):
+    res = create_glyph(payload, db)
+    ok = produce(GLYPH_TOPIC, {"type":"glyph.created","id":res["id"],"name":payload.get("name"),"summary":payload.get("summary")}, key=res["id"])
+    return {"id": res["id"], "published": ok}
+
+@app.get("/graph3d/data", response_class=JSONResponse)
+def graph3d_data(db=Depends(get_db),
+  limit_nodes:int=Query(300, ge=1, le=5000),
+  limit_edges:int=Query(1500, ge=0, le=50000),
+  window_minutes:int=Query(10080, ge=10, le=525600)):
+    return export_graph_json(db, limit_nodes, limit_edges, window_minutes)
+
+@app.get("/tags/data", response_class=JSONResponse)
+def tags_data(db=Depends(get_db)):
+    return export_tags_json(db)
+
+app.include_router(health_router)

@@ -1,0 +1,262 @@
+# compose: glyph-foundry
+# No "version:" key needed for modern Compose.
+
+networks:
+  appnet:
+    name: appnet
+    driver: bridge
+    attachable: true
+
+volumes:
+  pgdata:
+  minio_data:
+  edge_cache:
+
+services:
+  gf_postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gf_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: glyph_foundry
+      POSTGRES_USER: gf_user
+      POSTGRES_PASSWORD: gf_pass
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gf_user -d glyph_foundry"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/sql/00-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    networks: [appnet]
+
+  gf_redpanda:
+    image: redpandadata/redpanda:v24.1.9
+    container_name: gf_redpanda
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092,OUTSIDE://0.0.0.0:19092
+      - --advertise-kafka-addr=PLAINTEXT://gf_redpanda:9092,OUTSIDE://localhost:19092
+    ports: ["19092:19092"]
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [appnet]
+
+  minio:
+    image: minio/minio:latest
+    container_name: gf_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: adminadmin
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio_data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [appnet]
+
+  minio_init:
+    image: minio/mc:latest
+    container_name: gf_minio_init
+    entrypoint: ["/bin/sh","-lc"]
+    command: >
+      set -e
+      && mc alias set local http://minio:9000 admin adminadmin
+      && mc mb -p local/gf-exports || true
+      && mc anonymous set download local/gf-exports || true
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    networks: [appnet]
+
+  backend:
+    image: gf_backend:latest
+    container_name: gf_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry
+      APP_ENV: production
+      CORS_ALLOW_ORIGINS: "https://fitwellfast.com,http://fitwellfast.com,https://www.fitwellfast.com,http://www.fitwellfast.com"
+      KAFKA_BROKERS: gf_redpanda:9092
+      KAFKA_CLIENT_ID: gf_backend
+      INGEST_TOPIC: nlp.ingest
+      CANDIDATES_TOPIC: nlp.candidates
+      CURATION_TOPIC: curation.out
+      GLYPH_TOPIC: glyphs.created
+      TAG_PROPOSALS_TOPIC: tags.proposals
+      TAG_DECISIONS_TOPIC: tags.decisions
+      GRAPH_EVENTS_TOPIC: graph.events
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: adminadmin
+      S3_BUCKET_EXPORTS: gf-exports
+      GUNICORN_WORKERS: "4"
+      GUNICORN_THREADS: "2"
+    expose: ["8000"]
+    depends_on:
+      gf_postgres:
+        condition: service_healthy
+      gf_redpanda:
+        condition: service_started
+      minio:
+        condition: service_healthy
+      minio_init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [appnet]
+
+  edge:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./edge/conf.d:/etc/nginx/conf.d:ro
+      - ./edge/certbot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    container_name: gf_edge
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - gf_frontend
+    networks: [appnet]
+
+  gf_nlp_extract:
+    image: gf_backend:latest
+    container_name: gf_nlp_extract
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.run_nlp_extract"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry
+      KAFKA_BROKERS: gf_redpanda:9092
+      KAFKA_GROUP_ID: nlp_extract
+      INGEST_TOPIC: nlp.ingest
+      CANDIDATES_TOPIC: nlp.candidates
+      EMB_MODEL: text-embedding-3-large@3072
+      EMB_DIM: "384"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [appnet]
+
+  gf_linker_worker:
+    image: gf_backend:latest
+    container_name: gf_linker_worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.run_linker_worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry
+      KAFKA_BROKERS: gf_redpanda:9092
+      KAFKA_GROUP_ID: linker_worker
+      CANDIDATES_TOPIC: nlp.candidates
+      CURATION_TOPIC: curation.out
+      GRAPH_EVENTS_TOPIC: graph.events
+      MAX_POLL_RECORDS: "200"
+      AUTO_OFFSET_RESET: "latest"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [appnet]
+
+  gf_curation_worker:
+    image: gf_backend:latest
+    container_name: gf_curation_worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.run_curation_worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry
+      KAFKA_BROKERS: gf_redpanda:9092
+      KAFKA_GROUP_ID: curation_worker
+      CANDIDATES_TOPIC: nlp.candidates
+      CURATION_TOPIC: curation.out
+      GRAPH_EVENTS_TOPIC: graph.events
+      EMB_MODEL: text-embedding-3-large@3072
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [appnet]
+
+  gf_tag_suggester:
+    image: gf_backend:latest
+    container_name: gf_tag_suggester
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.run_tag_suggester"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry
+      KAFKA_BROKERS: gf_redpanda:9092
+      KAFKA_GROUP_ID: tag_suggester
+      TAG_PROPOSALS_TOPIC: tags.proposals
+      TAG_DECISIONS_TOPIC: tags.decisions
+      EMB_MODEL: text-embedding-3-large@3072
+      TAG_TH_ASSIGN: "0.62"
+      TAG_TH_NEW: "0.56"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [appnet]
+
+  gf_tag_protocol:
+    image: gf_backend:latest
+    container_name: gf_tag_protocol
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.run_tag_protocol_handler"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry
+      KAFKA_BROKERS: gf_redpanda:9092
+      KAFKA_GROUP_ID: tag_protocol
+      TAG_PROPOSALS_TOPIC: tags.proposals
+      TAG_DECISIONS_TOPIC: tags.decisions
+      GRAPH_EVENTS_TOPIC: graph.events
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [appnet]
+
+  gf_layout_worker:
+    image: gf_backend:latest
+    container_name: gf_layout_worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.run_layout_worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry
+      KAFKA_BROKERS: gf_redpanda:9092
+      KAFKA_GROUP_ID: layout_worker
+      GRAPH_EVENTS_TOPIC: graph.events
+      LAYOUT: pca
+      EMB_MODEL: text-embedding-3-large@3072
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [appnet]
+
+  gf_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: gf_frontend:latest
+    container_name: gf_frontend
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy }
+    expose: ["80"]
+    networks: [appnet]
