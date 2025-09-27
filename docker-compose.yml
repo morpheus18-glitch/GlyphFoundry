@@ -86,6 +86,9 @@ services:
 
   backend:
     image: gf_backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: gf_backend
     restart: unless-stopped
     environment:
@@ -108,7 +111,7 @@ services:
       S3_BUCKET_EXPORTS: gf-exports
       GUNICORN_WORKERS: "4"
       GUNICORN_THREADS: "2"
-    expose: ["8000"]
+    ports: ["8000:8000"]
     depends_on:
       gf_postgres:
         condition: service_healthy
@@ -258,5 +261,5 @@ services:
     restart: unless-stopped
     depends_on:
       backend: { condition: service_healthy }
-    expose: ["80"]
+    ports: ["8080:80"]
     networks: [appnet]
