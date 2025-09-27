@@ -100,12 +100,27 @@ ensure_local_requirements() {
   local venv_dir="$STAGED_STACK_VENV_DIR"
   if [[ ! -d "$venv_dir" ]]; then
     echo "Creating Python virtual environment for staged tests: $venv_dir"
+
     enforce_bootstrap_prerequisites
     if ! run "$BOOTSTRAP_PYTHON" -m venv "$venv_dir"; then
       cat <<'EOF' >&2
 Failed to create the staged-stack virtual environment.
 EOF
       print_staged_stack_venv_guidance
+
+    if ! "$BOOTSTRAP_PYTHON" -c 'import ensurepip' >/dev/null 2>&1; then
+      cat <<'EOF' >&2
+The Python interpreter used for staged-stack bootstrapping is missing the "ensurepip" module.
+Install the python3-venv package, point STAGED_STACK_VENV_DIR at an existing virtual environment, or set SKIP_PIP_INSTALL=1 to skip dependency installation.
+EOF
+      exit 1
+    fi
+    if ! run "$BOOTSTRAP_PYTHON" -m venv "$venv_dir"; then
+      cat <<'EOF' >&2
+Failed to create the staged-stack virtual environment.
+Install the python3-venv package, point STAGED_STACK_VENV_DIR at an existing virtual environment, or set SKIP_PIP_INSTALL=1 to skip dependency installation.
+EOF
+
       exit 1
     fi
   fi
