@@ -78,7 +78,7 @@ run_compose() {
 
 print_staged_stack_venv_guidance() {
   cat <<'GUIDANCE' >&2
-Install the python3-venv package, point STAGED_STACK_VENV_DIR at an existing virtual environment, or set SKIP_PIP_INSTALL=1 to skip dependency installation.
+Install the python3-venv package so that Python can provision virtual environments with pip (on some distributions you may also need python3-pip), point STAGED_STACK_VENV_DIR at an existing virtual environment, or set SKIP_PIP_INSTALL=1 to skip dependency installation.
 GUIDANCE
 }
 
@@ -122,6 +122,7 @@ EOF
     fi
     if ! "$PYTHON_BIN" -m pip --version >/dev/null 2>&1; then
       echo "virtual environment at $venv_dir is missing pip even after ensurepip" >&2
+      echo "Install python3-venv (and python3-pip if required), reuse an existing environment, or export SKIP_PIP_INSTALL=1." >&2
       print_staged_stack_venv_guidance
       exit 1
     fi
