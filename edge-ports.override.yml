@@ -1,5 +1,0 @@
-services:
-  edge:
-    ports:
-      - "80:80"
-      - "443:443"
