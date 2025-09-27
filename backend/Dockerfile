@@ -10,14 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# deps first (path relative to repo-root build context)
-COPY backend/requirements.txt /app/requirements.txt
+# deps first (paths relative to backend/ build context)
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# FLATTEN: copy source from repo-root into /app (not /app/app)
-COPY backend/app/ /app/
-COPY backend/alembic.ini /app/alembic.ini
-COPY backend/migrations/ /app/migrations/
+# FLATTEN: copy source tree directly into /app (not /app/app)
+COPY app/ /app/
+COPY alembic.ini /app/alembic.ini
+COPY alembic/ /app/alembic/
+COPY migrations/ /app/migrations/
+COPY gunicorn.conf.py /app/gunicorn.conf.py
 
 EXPOSE 8000
 # flat module path
