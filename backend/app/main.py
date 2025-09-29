@@ -1,8 +1,10 @@
-"""Glyph Foundry FastAPI application entrypoint."""
+"""Quantum Nexus - Enterprise Knowledge Graph Platform with Autonomous Monitoring."""
 from __future__ import annotations
 
+import asyncio
 import importlib
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -43,8 +45,39 @@ try:
 except Exception:
     ensure_min_schema = None  # type: ignore[assignment]
 
+# Initialize autonomous monitoring
+autonomous_monitoring_task = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan with autonomous monitoring."""
+    global autonomous_monitoring_task
+    
+    # Start autonomous monitoring
+    try:
+        from .autonomous_swarm import start_autonomous_monitoring
+        autonomous_monitoring_task = asyncio.create_task(start_autonomous_monitoring())
+        logging.info("Started autonomous swarm monitoring")
+    except Exception as e:
+        logging.warning(f"Could not start autonomous monitoring: {e}")
+    
+    yield
+    
+    # Cleanup on shutdown
+    if autonomous_monitoring_task:
+        autonomous_monitoring_task.cancel()
+        try:
+            await autonomous_monitoring_task
+        except asyncio.CancelledError:
+            pass
+
 configure_logging("INFO")
-app = FastAPI(title="Glyph Foundry API", version="1.0.0")
+app = FastAPI(
+    title="Quantum Nexus - Enterprise Knowledge Graph", 
+    version="3.0.0",
+    description="Multi-tenant SaaS knowledge graph with autonomous monitoring and quantum-enhanced security",
+    lifespan=lifespan
+)
 
 try:
     from .routes import router as api_router  # type: ignore
