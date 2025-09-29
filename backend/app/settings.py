@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     app_env: str = "production"
     cors_allow_origins: str = "*"
 
-    database_url: str = "postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry"
+    database_url: str = Field(default="postgresql+psycopg://gf_user:gf_pass@gf_postgres:5432/glyph_foundry", env="DATABASE_URL")
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_timeout: int = 30
