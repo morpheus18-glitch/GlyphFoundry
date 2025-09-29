@@ -5,7 +5,7 @@ integrations = ["python_log_in_with_replit:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["arrow-cpp", "glibcLocales", "pkg-config", "postgresql"]
+packages = ["arrow-cpp", "cargo", "glibcLocales", "libiconv", "libxcrypt", "openssl", "pkg-config", "postgresql", "rustc"]
 
 [workflows]
 runButton = "Project"
@@ -27,13 +27,13 @@ args = "Frontend Server"
 name = "Backend API"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd backend && uvicorn app.main:app --host localhost --port 8000 --reload"
-waitForPort = 8000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+waitForPort = 8000
 
 [[workflows.workflow]]
 name = "Frontend Server"
@@ -50,6 +50,14 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 45615
+externalPort = 3000
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
 
 [deployment]
 deploymentTarget = "autoscale"

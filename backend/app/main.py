@@ -97,8 +97,8 @@ except ImportError:
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in settings.cors_allow_origins.split(",") if o.strip()],
-    allow_credentials=False,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=True,  # Enable credentials for authentication
     allow_methods=["*"],
     allow_headers=["*"],
 )
