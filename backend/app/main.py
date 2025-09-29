@@ -15,9 +15,21 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 
 from .db import get_db, session_scope
-from .exports import export_graph_json, export_tags_json
-from .kafka_bus import produce
 from .settings import settings
+
+try:
+    from .exports import export_graph_json, export_tags_json
+except ImportError:
+    def export_graph_json(*args, **kwargs):
+        return {"nodes": [], "edges": [], "stats": {"node_count": 0, "edge_count": 0}}
+    def export_tags_json(*args, **kwargs):
+        return {"tags": []}
+
+try:
+    from .kafka_bus import produce
+except ImportError:
+    def produce(*args, **kwargs):
+        return False
 
 try:
     from .logging_config import configure_logging
@@ -41,6 +53,13 @@ except Exception:  # pragma: no cover - optional package wiring
 
 if api_router is not None:
     app.include_router(api_router)
+
+# Include knowledge graph API
+try:
+    from .api.knowledge_graph import router as kg_router
+    app.include_router(kg_router)
+except ImportError:
+    pass
 
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(

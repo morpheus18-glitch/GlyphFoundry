@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "bash", "rust-stable", "python-3.11"]
+modules = ["nodejs-20", "bash", "rust-stable", "python-3.11", "postgresql-16"]
 [agent]
 expertMode = true
 
@@ -16,15 +16,31 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Frontend Server"
+args = "Backend API"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Constellation Showcase"
 
 [[workflows.workflow]]
-name = "Frontend Server"
+name = "Backend API"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd frontend && npm run dev"
+args = "cd backend && uvicorn app.main:app --host localhost --port 8000 --reload"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Constellation Showcase"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 -m http.server 5000 --directory ."
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -33,10 +49,6 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 34647
-externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"

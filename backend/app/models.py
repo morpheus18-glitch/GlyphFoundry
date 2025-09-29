@@ -16,7 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 from settings import settings
@@ -57,48 +57,87 @@ class Message(Base):
 
 
 class Node(Base):
-    """Unified graph node materialized via triggers from glyphs/messages."""
+    """Multi-tenant knowledge graph nodes with vector embeddings."""
 
     __tablename__ = "nodes"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     kind: Mapped[str] = mapped_column(String, nullable=False)
-    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    
+    # Vector embeddings
+    embedding_384 = Column(VectorType(384), nullable=True)
+    embedding_1536 = Column(VectorType(1536), nullable=True)
+    embedding_3072 = Column(VectorType(3072), nullable=True)
+    
+    # 3D Position
+    pos_x: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pos_y: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pos_z: Mapped[float | None] = mapped_column(Float, nullable=True)
+    
+    # Visual styling
+    color: Mapped[str | None] = mapped_column(String, nullable=True)
+    size: Mapped[float | None] = mapped_column(Float, nullable=True)
+    opacity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    glow_intensity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    
+    # Learning metrics
+    importance_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    connection_strength: Mapped[float | None] = mapped_column(Float, nullable=True)
+    learning_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    last_accessed: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        CheckConstraint("kind IN ('glyph','message')", name="nodes_kind_check"),
-        Index("ix_nodes_kind_created", "kind", "created_at"),
+        Index("ix_nodes_tenant_kind", "tenant_id", "kind"),
+        Index("ix_nodes_created", "created_at"),
     )
 
 
 class Edge(Base):
+    """Multi-tenant knowledge graph edges with autonomous learning."""
+    
     __tablename__ = "edges"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    src_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    dst_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    rel: Mapped[str | None] = mapped_column(String, nullable=True)
-    weight: Mapped[float | None] = mapped_column(Float, nullable=True, default=1.0)
-    dedupe_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    src_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    dst_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    edge_type: Mapped[str] = mapped_column(String, nullable=False)
+    relation_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    weight: Mapped[float | None] = mapped_column(Float, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    strength: Mapped[float | None] = mapped_column(Float, nullable=True)
+    
+    # Autonomous learning fields
+    auto_generated: Mapped[bool | None] = mapped_column(nullable=True)
+    learning_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reinforcement_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_reinforced: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # Visual styling
+    color: Mapped[str | None] = mapped_column(String, nullable=True)
+    thickness: Mapped[float | None] = mapped_column(Float, nullable=True)
+    opacity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    animation_speed: Mapped[float | None] = mapped_column(Float, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        Index("ix_edges_src", "src_id"),
-        Index("ix_edges_dst", "dst_id"),
+        Index("ix_edges_tenant_src", "tenant_id", "src_id"),
+        Index("ix_edges_tenant_dst", "tenant_id", "dst_id"),
         Index("ix_edges_created", "created_at"),
-        UniqueConstraint(
-            "src_id",
-            "dst_id",
-            "rel",
-            "dedupe_key",
-            name="edges_src_dst_rel_dedupe_key_key",
-        ),
     )
 
 

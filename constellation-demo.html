@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Nexus - Constellation Knowledge Graph</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: radial-gradient(ellipse at center, #0f1419 0%, #0b0e13 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        #container { width: 100vw; height: 100vh; position: relative; }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(64, 144, 226, 0.3);
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4A90E2;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 15px;
+        }
+        .stats {
+            color: #4A90E2;
+            font-size: 14px;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(74, 144, 226, 0.3);
+            border-top: 4px solid #4A90E2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="container">
+        <div id="ui-overlay">
+            <div class="title">Quantum Nexus</div>
+            <div class="subtitle">Multi-Tenant SaaS Knowledge Graph</div>
+            <div class="stats">
+                ✨ Constellation Visualization<br>
+                🌌 4K Space Environment<br>
+                🔮 Neon Wisp Nodes<br>
+                ⚡ Energy Connections<br>
+                🌍 Google Earth Controls
+            </div>
+        </div>
+        
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>Initializing Constellation...</div>
+        </div>
+    </div>
+
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Controls (Google Earth style)
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.rotateSpeed = 0.9;
+        controls.zoomSpeed = 0.9;
+        controls.panSpeed = 0.8;
+
+        // Space environment
+        const createStarField = () => {
+            const geometry = new THREE.BufferGeometry();
+            const starCount = 3000;
+            const positions = new Float32Array(starCount * 3);
+            
+            for (let i = 0; i < starCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 200;
+                positions[i + 1] = (Math.random() - 0.5) * 200;
+                positions[i + 2] = (Math.random() - 0.5) * 200;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({
+                color: 0x4A90E2,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            return new THREE.Points(geometry, material);
+        };
+
+        // Neon wisp nodes
+        const createNeonWispNode = (position, label) => {
+            const group = new THREE.Group();
+            
+            // Core glow
+            const coreGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+            const coreMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4A90E2,
+                transparent: true,
+                opacity: 0.9
+            });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            
+            // Outer wisp
+            const wispGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const wispMaterial = new THREE.MeshBasicMaterial({
+                color: 0x64B5F6,
+                transparent: true,
+                opacity: 0.3,
+                wireframe: true
+            });
+            const wisp = new THREE.Mesh(wispGeometry, wispMaterial);
+            
+            group.add(core);
+            group.add(wisp);
+            group.position.copy(position);
+            group.userData = { label };
+            
+            return group;
+        };
+
+        // Energy connections
+        const createEnergyConnection = (start, end) => {
+            const curve = new THREE.QuadraticBezierCurve3(
+                start,
+                new THREE.Vector3(
+                    (start.x + end.x) / 2 + (Math.random() - 0.5) * 2,
+                    (start.y + end.y) / 2 + (Math.random() - 0.5) * 2,
+                    (start.z + end.z) / 2 + (Math.random() - 0.5) * 2
+                ),
+                end
+            );
+            
+            const geometry = new THREE.TubeGeometry(curve, 20, 0.02, 8, false);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x00FF88,
+                transparent: true,
+                opacity: 0.6,
+                emissive: 0x004422
+            });
+            
+            return new THREE.Mesh(geometry, material);
+        };
+
+        // Constellation data
+        const constellationData = {
+            nodes: [
+                { id: "1", label: "Orion Nebula", x: 0, y: 0, z: 0 },
+                { id: "2", label: "Betelgeuse", x: 5, y: 2, z: -3 },
+                { id: "3", label: "Rigel", x: -4, y: -1, z: 2 },
+                { id: "4", label: "Horsehead Nebula", x: 2, y: -3, z: 1 },
+                { id: "5", label: "Andromeda Galaxy", x: -6, y: 4, z: -2 },
+                { id: "6", label: "Polaris", x: 0, y: 6, z: 0 },
+                { id: "7", label: "Vega", x: 3, y: -2, z: 4 },
+                { id: "8", label: "Sirius", x: -2, y: 5, z: -1 },
+                { id: "9", label: "Proxima Centauri", x: 4, y: -4, z: 3 },
+                { id: "10", label: "Sagittarius A*", x: -5, y: -2, z: -4 }
+            ],
+            edges: [
+                { source: "1", target: "2" },
+                { source: "1", target: "3" },
+                { source: "2", target: "3" },
+                { source: "4", target: "1" },
+                { source: "5", target: "6" },
+                { source: "6", target: "7" },
+                { source: "7", target: "8" },
+                { source: "8", target: "9" },
+                { source: "9", target: "10" },
+                { source: "5", target: "10" }
+            ]
+        };
+
+        // Initialize scene
+        const init = () => {
+            // Add starfield
+            const stars = createStarField();
+            scene.add(stars);
+            
+            // Create nodes
+            const nodeMap = new Map();
+            constellationData.nodes.forEach(node => {
+                const position = new THREE.Vector3(node.x, node.y, node.z);
+                const wispNode = createNeonWispNode(position, node.label);
+                scene.add(wispNode);
+                nodeMap.set(node.id, wispNode);
+            });
+            
+            // Create connections
+            constellationData.edges.forEach(edge => {
+                const sourceNode = nodeMap.get(edge.source);
+                const targetNode = nodeMap.get(edge.target);
+                if (sourceNode && targetNode) {
+                    const connection = createEnergyConnection(
+                        sourceNode.position,
+                        targetNode.position
+                    );
+                    scene.add(connection);
+                }
+            });
+            
+            // Position camera
+            camera.position.set(10, 8, 12);
+            camera.lookAt(0, 0, 0);
+            
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+        };
+
+        // Animation loop
+        const animate = () => {
+            requestAnimationFrame(animate);
+            
+            // Rotate wisps
+            scene.children.forEach(child => {
+                if (child.userData && child.userData.label) {
+                    child.rotation.y += 0.01;
+                    child.children[1].rotation.x += 0.005; // Outer wisp
+                }
+            });
+            
+            controls.update();
+            renderer.render(scene, camera);
+        };
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start
+        setTimeout(() => {
+            init();
+            animate();
+        }, 1000);
+    </script>
+</body>
+</html>
