@@ -52,14 +52,10 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 45615
-externalPort = 3000
-
-[[ports]]
 localPort = 8000
 externalPort = 8000
 
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd backend && gunicorn --bind=0.0.0.0:5000 --workers=4 --worker-class=uvicorn.workers.UvicornWorker --timeout=120 --keep-alive=2 app.main:app"]
-build = ["bash", "-c", "cd frontend && npm run build"]
+build = ["bash", "-c", "cd frontend && npm install && npm run build"]
