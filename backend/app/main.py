@@ -14,20 +14,20 @@ from sqlalchemy.orm import Session
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 
-from db import get_db, session_scope
-from exports import export_graph_json, export_tags_json
-from kafka_bus import produce
-from settings import settings
+from .db import get_db, session_scope
+from .exports import export_graph_json, export_tags_json
+from .kafka_bus import produce
+from .settings import settings
 
 try:
-    from logging_config import configure_logging
+    from .logging_config import configure_logging
 except Exception:
     def configure_logging(*_args, **_kwargs):
         """Fallback logging configuration used during local development."""
         logging.basicConfig(level=logging.INFO)
 
 try:
-    from ensure_schema import ensure_min_schema
+    from .ensure_schema import ensure_min_schema
 except Exception:
     ensure_min_schema = None  # type: ignore[assignment]
 
@@ -35,7 +35,7 @@ configure_logging("INFO")
 app = FastAPI(title="Glyph Foundry API", version="1.0.0")
 
 try:
-    from routes import router as api_router  # type: ignore
+    from .routes import router as api_router  # type: ignore
 except Exception:  # pragma: no cover - optional package wiring
     api_router = None
 
