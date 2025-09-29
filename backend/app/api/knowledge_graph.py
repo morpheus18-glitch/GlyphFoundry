@@ -87,14 +87,16 @@ async def create_node(
     # Convert embedding to PostgreSQL vector format
     embedding_str = f"[{','.join(map(str, embedding))}]" if embedding else None
     
-    # Create node with raw SQL (simplified for demo)
+    # Create node with all required fields populated
     sql = text("""
         INSERT INTO nodes (
             tenant_id, kind, name, summary, content, metadata,
-            embedding_384, color, size, glow_intensity
+            embedding_384, pos_x, pos_y, pos_z, color, size, 
+            opacity, glow_intensity, importance_score, connection_strength
         ) VALUES (
             :tenant_id, :kind, :name, :summary, :content, :metadata,
-            :embedding_384::vector, :color, :size, :glow_intensity
+            :embedding_384::vector, :pos_x, :pos_y, :pos_z, :color, :size,
+            :opacity, :glow_intensity, :importance_score, :connection_strength
         ) RETURNING *
     """)
     
@@ -106,9 +108,15 @@ async def create_node(
         'content': node.content,
         'metadata': node.metadata or {},
         'embedding_384': embedding_str,
+        'pos_x': 0.0,  # Default to origin, will be positioned by layout algorithm
+        'pos_y': 0.0,
+        'pos_z': 0.0,
         'color': node.color,
         'size': node.size,
-        'glow_intensity': node.glow_intensity
+        'opacity': 1.0,  # Default opacity
+        'glow_intensity': node.glow_intensity,
+        'importance_score': 0.5,  # Default importance
+        'connection_strength': 0.0  # Will be updated by autonomous learning
     })
     
     new_node = result.fetchone()
