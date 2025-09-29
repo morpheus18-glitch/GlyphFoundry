@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback, Suspense } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, Environment } from "@react-three/drei";
 import { EffectComposer, Bloom, DepthOfField, SMAA, ChromaticAberration, Glitch } from "@react-three/postprocessing";
 import { SpaceEnvironment } from "./SpaceEnvironment";
 import { NeonWispNode } from "./NeonWispNode";
@@ -366,15 +366,14 @@ function GraphScene({
         </EffectComposer>
       )}
 
-      <OrbitControls
-        ref={setControls as any}
-        enableDamping
-        dampingFactor={0.05}
+      <OrbitalControls
+        enableZoom={true}
+        enableRotate={true}
+        enablePan={true}
+        autoRotate={false}
         minDistance={120}
         maxDistance={2400}
-        rotateSpeed={0.9}
-        zoomSpeed={0.9}
-        panSpeed={0.8}
+        dampingFactor={0.05}
       />
     </>
   );
@@ -823,11 +822,42 @@ export default function NeuralKnowledgeNetwork({
                 autoRotateSpeed={0.3}
               />
               
-              <ConstellationScene
-                graph={graph}
-                onSelect={handleSelect}
-                positions={posRef.current}
-              />
+              {/* Constellation-style knowledge graph visualization */}
+              {posRef.current && graph.nodes.map((node) => {
+                const pos = (posRef.current as any)?.[node.id];
+                if (!pos) return null;
+                
+                return (
+                  <NeonWispNode
+                    key={node.id}
+                    position={[pos.x ?? 0, pos.y ?? 0, pos.z ?? 0]}
+                    onClick={() => handleSelect(node)}
+                    color="#4ecdc4"
+                    size={1.5}
+                    glow={1.8}
+                    importance={node.importance || 0.5}
+                  />
+                );
+              })}
+              
+              {/* Energy connections between nodes */}
+              {posRef.current && graph.edges.map((edge, idx) => {
+                const sourcePos = (posRef.current as any)?.[edge.source];
+                const targetPos = (posRef.current as any)?.[edge.target];
+                if (!sourcePos || !targetPos) return null;
+                
+                return (
+                  <EnergyConnection
+                    key={`${edge.source}-${edge.target}-${idx}`}
+                    start={[sourcePos.x, sourcePos.y, sourcePos.z]}
+                    end={[targetPos.x, targetPos.y, targetPos.z]}
+                    color="#4ecdc4"
+                    thickness={0.5}
+                    opacity={0.3}
+                    animationSpeed={1.0}
+                  />
+                );
+              })}
               
               {/* Cinematic HDR Post-Processing for 4K */}
               <EffectComposer enableNormalPass={false}>

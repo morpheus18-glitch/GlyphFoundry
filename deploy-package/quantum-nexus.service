@@ -1,0 +1,17 @@
+[Unit]
+Description=Quantum Nexus Enterprise Knowledge Graph
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/quantum-nexus
+Environment="PATH=/var/www/quantum-nexus/venv/bin"
+EnvironmentFile=/var/www/quantum-nexus/.env
+ExecStart=/var/www/quantum-nexus/venv/bin/gunicorn --bind 0.0.0.0:8000 --workers 4 --worker-class uvicorn.workers.UvicornWorker --timeout 120 --keep-alive 2 backend.app.main:app
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

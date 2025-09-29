@@ -1,9 +1,6 @@
 import React, { useRef } from 'react';
-import { extend, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-
-// Extend OrbitControls to use with React Three Fiber
-extend({ OrbitControls });
+import { useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 
 interface OrbitalControlsProps {
   enableZoom?: boolean;
@@ -30,19 +27,8 @@ export function OrbitalControls({
   maxPolarAngle = Math.PI,
   dampingFactor = 0.05
 }: OrbitalControlsProps) {
-  const { camera, gl } = useThree();
-  const controlsRef = useRef<OrbitControls>(null);
-
-  useFrame(() => {
-    if (controlsRef.current) {
-      controlsRef.current.update();
-    }
-  });
-
   return (
-    <orbitControls
-      ref={controlsRef}
-      args={[camera, gl.domElement]}
+    <DreiOrbitControls
       enableZoom={enableZoom}
       enableRotate={enableRotate}
       enablePan={enablePan}
@@ -54,11 +40,7 @@ export function OrbitalControls({
       maxPolarAngle={maxPolarAngle}
       enableDamping={true}
       dampingFactor={dampingFactor}
-      screenSpacePanning={false}
-      rotateSpeed={0.4}
-      zoomSpeed={0.6}
-      panSpeed={0.8}
-      keyPanSpeed={7.0}
+      makeDefault
     />
   );
 }
