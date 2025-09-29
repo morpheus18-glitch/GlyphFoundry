@@ -1,0 +1,182 @@
+═══════════════════════════════════════════════════════════════
+  QUANTUM NEXUS - DIGITAL OCEAN DEPLOYMENT QUICK START
+═══════════════════════════════════════════════════════════════
+
+📦 PACKAGE CONTENTS:
+  ✓ Backend FastAPI application (enterprise security)
+  ✓ Frontend production build (WebGL 3D visualization)
+  ✓ Quantum knowledge graph database schema
+  ✓ Nginx reverse proxy configuration
+  ✓ Systemd service for auto-restart
+  ✓ Automated installation script
+
+═══════════════════════════════════════════════════════════════
+
+🚀 DEPLOYMENT STEPS:
+
+1️⃣  TRANSFER TO YOUR DROPLET
+
+   Option A - Direct SCP (if you have SSH key):
+   ────────────────────────────────────────────────
+   scp -r deploy-package root@YOUR_DROPLET_IP:/tmp/quantum-nexus
+
+
+   Option B - Download from Replit:
+   ────────────────────────────────────────────────
+   1. In Replit, click "Files" → "Export as ZIP"
+   2. Download and extract the zip file
+   3. Upload deploy-package/ to your droplet:
+      scp -r deploy-package root@YOUR_DROPLET_IP:/tmp/quantum-nexus
+
+
+2️⃣  RUN THE INSTALLER
+
+   SSH into your droplet:
+   ────────────────────────────────────────────────
+   ssh root@YOUR_DROPLET_IP
+
+   Navigate and run installer:
+   ────────────────────────────────────────────────
+   cd /tmp/quantum-nexus
+   chmod +x install-on-droplet.sh
+   ./install-on-droplet.sh
+
+   ⏱️  Installation takes 5-10 minutes
+
+
+3️⃣  VERIFY DEPLOYMENT
+
+   Check service status:
+   ────────────────────────────────────────────────
+   sudo systemctl status quantum-nexus
+
+   Test API health:
+   ────────────────────────────────────────────────
+   curl http://localhost:8000/healthz
+
+   Access your app:
+   ────────────────────────────────────────────────
+   http://YOUR_DROPLET_IP
+
+
+4️⃣  SETUP SSL (PRODUCTION READY)
+
+   Install Certbot:
+   ────────────────────────────────────────────────
+   sudo apt install certbot python3-certbot-nginx -y
+
+   Get certificate (replace with your domain):
+   ────────────────────────────────────────────────
+   sudo certbot --nginx -d yourdomain.com
+
+   Enable firewall:
+   ────────────────────────────────────────────────
+   sudo ufw allow 'Nginx Full'
+   sudo ufw enable
+
+═══════════════════════════════════════════════════════════════
+
+📊 WHAT GETS INSTALLED:
+
+  ✓ PostgreSQL 15 with pgvector extension
+  ✓ Quantum knowledge graph schema (all tables)
+  ✓ Python 3 virtual environment
+  ✓ Gunicorn ASGI server (4 workers)
+  ✓ Nginx reverse proxy
+  ✓ Systemd service (auto-restart on failure)
+  ✓ Quantum-enhanced AES-256-GCM encryption
+  ✓ Multi-tenant row-level security
+
+═══════════════════════════════════════════════════════════════
+
+🔐 SECURITY FEATURES:
+
+  ✓ Auto-generated master encryption key
+  ✓ Secure database password generation
+  ✓ JWT authentication with tenant-specific signing
+  ✓ Fail-closed security (won't start without keys)
+  ✓ Comprehensive audit logging
+  ✓ Environment file secured (chmod 600)
+
+═══════════════════════════════════════════════════════════════
+
+📋 SYSTEM REQUIREMENTS:
+
+  Minimum:
+    • 2 GB RAM
+    • 2 vCPUs
+    • 25 GB SSD
+    • Ubuntu 22.04 LTS
+
+  Recommended:
+    • 4 GB RAM
+    • 4 vCPUs
+    • 50 GB SSD
+    • Ubuntu 22.04 LTS
+
+═══════════════════════════════════════════════════════════════
+
+🛠️  USEFUL COMMANDS:
+
+  View logs:
+  ────────────────────────────────────────────────
+  sudo journalctl -u quantum-nexus -f
+
+  Restart service:
+  ────────────────────────────────────────────────
+  sudo systemctl restart quantum-nexus
+
+  Check Nginx config:
+  ────────────────────────────────────────────────
+  sudo nginx -t
+
+  Database access:
+  ────────────────────────────────────────────────
+  sudo -u postgres psql quantum_nexus
+
+  View environment variables:
+  ────────────────────────────────────────────────
+  cat /var/www/quantum-nexus/.env
+
+═══════════════════════════════════════════════════════════════
+
+🎯 ARCHITECTURE:
+
+  Frontend (Static Files)
+    ↓
+  Nginx :80/:443 (Reverse Proxy + SSL)
+    ↓
+  Gunicorn :8000 (4 Workers)
+    ↓
+  FastAPI Backend (Multi-Tenant Security)
+    ↓
+  PostgreSQL + pgvector (Knowledge Graph)
+
+═══════════════════════════════════════════════════════════════
+
+❓ TROUBLESHOOTING:
+
+  Service won't start:
+    → Check logs: sudo journalctl -u quantum-nexus -xe
+    → Verify .env file: ls -la /var/www/quantum-nexus/.env
+    → Test manually: cd /var/www/quantum-nexus && source venv/bin/activate && python -m app.main
+
+  Database connection failed:
+    → Check PostgreSQL: sudo systemctl status postgresql
+    → Verify database exists: sudo -u postgres psql -l
+    → Check credentials in .env file
+
+  Nginx 502 error:
+    → Backend not running: sudo systemctl start quantum-nexus
+    → Check backend port: netstat -tlnp | grep 8000
+
+  Can't access from browser:
+    → Check firewall: sudo ufw status
+    → Verify Nginx: sudo systemctl status nginx
+    → Check server IP: curl ifconfig.me
+
+═══════════════════════════════════════════════════════════════
+
+✨ Your Quantum Nexus Knowledge Graph is ready to deploy!
+
+For detailed documentation, see: DEPLOYMENT.md
