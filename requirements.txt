@@ -13,3 +13,7 @@ scikit-learn==1.5.2
 pyarrow==17.0.0
 itsdangerous==2.2.0
 pydantic-settings==2.5.2
+flask-dance
+flask-login
+oauthlib
+pyjwt
