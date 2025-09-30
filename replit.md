@@ -92,6 +92,46 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Additions (September 2025)
 
+### User Personalization & Account Management System
+- **Purpose**: Complete user-level personalization with role-based access control and learned behavioral profiles
+- **Authentication**: Secure JWT-based authentication with proper RLS context isolation
+- **Database Schema**: 5 new tables (user_preferences, custom_instructions, learned_profiles, user_interactions, search_history)
+- **Features**:
+  - User registration and profile management with secure password hashing
+  - Theme, language, timezone, and UI preferences per user
+  - Custom AI instructions with tuning parameters (temperature, max_tokens, top_p, frequency_penalty)
+  - Semantic knowledge foundry that learns user interests, expertise, communication style
+  - Behavioral pattern tracking (activity patterns, interaction frequency, common queries)
+  - Personalized dashboard with stats, recent activity, popular searches
+  - Search history with vector embeddings for personalized recommendations
+- **API Endpoints**:
+  - `POST /accounts/register` - User registration
+  - `GET /accounts/profile` - Get user profile and preferences
+  - `PUT /accounts/preferences` - Update UI/UX preferences
+  - `POST /accounts/instructions` - Create custom AI instructions
+  - `GET /accounts/instructions` - List user's custom instructions
+  - `GET /accounts/learned-profile` - Get AI-learned user profile
+  - `POST /accounts/interactions` - Log user interactions for learning
+  - `GET /accounts/dashboard` - Personalized insights dashboard
+- **Security**: Full user-level isolation via RLS policies, JWT authentication, sensitive data protection
+
+### Multi-Modal File Ingestion System
+- **Purpose**: Accept pictures, files, and natural language from mobile devices
+- **Storage**: MinIO/S3 integration with presigned URLs and local fallback
+- **File Types**: Images (JPG, PNG, GIF, WebP), Documents (PDF, DOCX), CSV, JSON, Text, Video, Audio
+- **Text Extraction**: PyPDF2 for PDFs, structured parsing for CSV/JSON
+- **Mobile Compatible**: Full multipart/form-data support for Apple/Android fetch API
+- **API Endpoints**:
+  - `POST /files/upload` - Upload any file type with automatic text extraction
+  - `POST /files/ingest/text` - Direct text/JSON/CSV ingestion
+  - `GET /files/list` - List files with pagination and filtering
+  - `GET /files/{id}` - Get file details and download URLs
+  - `DELETE /files/{id}` - Soft delete files
+- **Knowledge Graph**: Automatic node creation from uploaded content
+- **Security**: Tenant-scoped storage, RLS policies, presigned URL expiry (7 days)
+
+## Recent Additions (September 2025)
+
 ### 4D Glyph Visualization System
 - **Purpose**: Time-dimensional knowledge graph visualization for advanced observability
 - **Backend**: Python with deterministic blake2b hash-based spatial positioning
