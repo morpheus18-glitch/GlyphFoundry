@@ -119,61 +119,82 @@ export default function App() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-100">
-      <header className="flex flex-wrap items-center gap-3 border-b border-neutral-900 bg-neutral-950/90 px-4 py-3">
-        <strong className="text-base">Quantum Nexus</strong>
-        <nav className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-blue-50 text-gray-900">
+      <header className="flex flex-wrap items-center gap-4 border-b border-gray-200 bg-white/80 backdrop-blur-md px-6 py-4 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+            KG
+          </div>
+          <strong className="text-lg font-semibold text-gray-800">Knowledge Graph</strong>
+        </div>
+        <nav className="flex flex-wrap gap-2">
           {navItems.map(([mode, label]) => (
             <button
               key={mode}
               type="button"
               onClick={() => setView(mode)}
-              className={`rounded-full px-3 py-1 transition-colors ${
-                view === mode ? "bg-white text-black" : "bg-neutral-900 text-neutral-400 hover:text-white"
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                view === mode 
+                  ? "bg-blue-600 text-white shadow-md" 
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
               }`}
             >
               {label}
             </button>
           ))}
         </nav>
-        <span className="ml-auto text-[11px] text-neutral-500">
-          {loading
-            ? "Loading graph…"
-            : graph
-            ? `Nodes ${graph.stats.node_count} • Edges ${graph.stats.edge_count}`
-            : "Graph offline"}
-        </span>
+        <div className="ml-auto flex items-center gap-3">
+          {loading && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+              <span>Loading...</span>
+            </div>
+          )}
+          {!loading && graph && (
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <span className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                {graph.stats.node_count} Nodes
+              </span>
+              <span className="text-gray-300">•</span>
+              <span>{graph.stats.edge_count} Connections</span>
+            </div>
+          )}
+          {!loading && !graph && (
+            <span className="text-sm text-gray-500">No data</span>
+          )}
+        </div>
         {error && (
-          <span className="rounded border border-red-500 bg-red-900/50 px-2 py-1 text-[11px] text-red-200" role="alert">
+          <span className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
             {error}
           </span>
         )}
       </header>
 
       {view === "graph" && (
-        <div className="border-b border-neutral-900 bg-neutral-950/60">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3 text-[11px] uppercase tracking-[0.2em]">
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-1 text-neutral-500">
-                <span>Window</span>
+        <div className="border-b border-gray-200 bg-white/60">
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-4 px-6 py-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <span className="font-medium">Time Range:</span>
                 <select
                   value={windowMinutes}
                   onChange={(event) => setWindowMinutes(Number(event.target.value))}
-                  className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-neutral-200 focus:border-white focus:outline-none"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   {WINDOW_OPTIONS.map((option) => (
                     <option key={option} value={option}>
-                      {option}m
+                      {option} minutes
                     </option>
                   ))}
                 </select>
               </label>
-              <label className="flex items-center gap-1 text-neutral-500">
-                <span>Nodes</span>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <span className="font-medium">Max Nodes:</span>
                 <select
                   value={limitNodes}
                   onChange={(event) => setLimitNodes(Number(event.target.value))}
-                  className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-neutral-200 focus:border-white focus:outline-none"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   {NODE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
@@ -182,12 +203,12 @@ export default function App() {
                   ))}
                 </select>
               </label>
-              <label className="flex items-center gap-1 text-neutral-500">
-                <span>Edges</span>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <span className="font-medium">Max Connections:</span>
                 <select
                   value={limitEdges}
                   onChange={(event) => setLimitEdges(Number(event.target.value))}
-                  className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-neutral-200 focus:border-white focus:outline-none"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   {EDGE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
@@ -198,46 +219,58 @@ export default function App() {
               </label>
             </div>
             {lastUpdated && (
-              <span className="ml-auto hidden text-neutral-500 md:inline">
-                updated {new Date(lastUpdated).toLocaleTimeString()}
+              <span className="ml-auto hidden text-sm text-gray-500 md:inline">
+                Last updated: {new Date(lastUpdated).toLocaleTimeString()}
               </span>
             )}
             <button
               type="button"
               onClick={triggerRefresh}
-              className="ml-auto rounded-full border border-neutral-800 bg-neutral-950/80 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-neutral-400 transition-colors hover:text-white"
+              className="ml-auto rounded-lg border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
             >
-              Refresh
+              Refresh Data
             </button>
           </div>
         </div>
       )}
 
-      <main className="flex-1 overflow-auto">
-        <section className="mx-auto w-full max-w-6xl px-4 py-6">
+      <main className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 to-blue-50">
+        <section className="mx-auto w-full max-w-7xl px-6 py-8">
           {view === "overview" && <Dashboard />}
           {view === "nodes" && <NodesPage />}
           {view === "embeddings" && <EmbeddingsPage />}
           {view === "settings" && <SettingsPage />}
           {view === "graph" && (
-            <div className="grid h-[70vh] w-full grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-              <section className="relative flex items-center justify-center rounded border border-neutral-800 bg-black">
-                <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading 3D renderer…</div>}>
+            <div className="grid h-[75vh] w-full grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+              <section className="relative flex items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                <Suspense fallback={
+                  <div className="flex flex-col items-center justify-center gap-3 p-8">
+                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                    <p className="text-sm text-gray-600">Loading 3D visualization...</p>
+                  </div>
+                }>
                   <NeuralKnowledgeNetwork nodes={graph?.nodes} edges={graph?.edges} />
                 </Suspense>
               </section>
-              <aside className="hidden overflow-auto rounded border border-neutral-800 bg-neutral-950/60 p-4 lg:block">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-400">Tags</h2>
+              <aside className="hidden overflow-auto rounded-2xl border border-gray-200 bg-white shadow-md p-6 lg:block">
+                <h2 className="mb-4 text-base font-semibold text-gray-800">Knowledge Tags</h2>
                 {tags.length === 0 ? (
-                  <p className="text-xs text-neutral-500">No tags available.</p>
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="mb-2 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                      <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-500">No tags available yet</p>
+                  </div>
                 ) : (
-                  <ul className="space-y-3 text-sm">
+                  <ul className="space-y-3">
                     {tags.map((tag) => (
-                      <li key={`${tag.tag_id}:${tag.node_id}`} className="rounded border border-neutral-800 bg-neutral-950/60 p-3">
-                        <div className="text-xs uppercase tracking-wide text-neutral-500">{tag.slug}</div>
-                        <div className="text-sm text-neutral-100">{tag.name}</div>
-                        <div className="text-[11px] text-neutral-500">
-                          node {tag.node_id.slice(0, 8)}… • confidence {tag.confidence.toFixed(2)}
+                      <li key={`${tag.tag_id}:${tag.node_id}`} className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 hover:bg-gray-50 transition-colors">
+                        <div className="text-xs font-medium text-blue-600 mb-1">{tag.slug}</div>
+                        <div className="text-sm font-medium text-gray-900 mb-1">{tag.name}</div>
+                        <div className="text-xs text-gray-500">
+                          Node: {tag.node_id.slice(0, 8)}... • {Math.round(tag.confidence * 100)}% confidence
                         </div>
                       </li>
                     ))}
@@ -247,8 +280,13 @@ export default function App() {
             </div>
           )}
           {view === "cinematic" && (
-            <div className="h-[70vh] w-full overflow-hidden rounded border border-neutral-800 bg-black">
-              <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading cinematic renderer…</div>}>
+            <div className="h-[75vh] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-900 to-black shadow-2xl">
+              <Suspense fallback={
+                <div className="flex h-full flex-col items-center justify-center gap-3 p-8">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500 border-t-transparent"></div>
+                  <p className="text-sm text-gray-400">Loading cinematic renderer...</p>
+                </div>
+              }>
                 <CinematicScenes />
               </Suspense>
             </div>

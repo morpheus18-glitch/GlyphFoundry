@@ -97,8 +97,6 @@ async def get_graph_data(
 @router.get("/tags/data")
 async def get_tags_data(db: Session = Depends(get_db)):
     """Get tags data for visualization."""
-    tenant_id = "00000000-0000-0000-0000-000000000001"
-    
     sql = text("""
         SELECT 
             t.id::text as tag_id,
@@ -108,12 +106,11 @@ async def get_tags_data(db: Session = Depends(get_db)):
             nt.confidence
         FROM tags t
         JOIN node_tags nt ON nt.tag_id = t.id
-        WHERE t.tenant_id = :tenant_id
         ORDER BY nt.confidence DESC
         LIMIT 100
     """)
     
-    result = db.execute(sql, {'tenant_id': tenant_id})
+    result = db.execute(sql)
     
     items = [
         {
