@@ -129,15 +129,31 @@ doctl databases create glyph-foundry-redis \
   --region nyc3
 ```
 
-**Self-Hosted (Docker Compose):**
+**Self-Hosted (Docker Compose with Security):**
 ```yaml
 redis:
-  image: redis:7-alpine
+  image: redis:7.2-alpine  # Pinned version
   ports:
-    - "6379:6379"
-  command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --appendonly yes
+    - "6380:6380"  # TLS port only
+  command: >
+    redis-server
+    --port 0
+    --tls-port 6380
+    --requirepass ${REDIS_PASSWORD}
+    --maxmemory 2gb
+    --maxmemory-policy allkeys-lru
+    --appendonly yes
+    --tls-cert-file /tls/redis.crt
+    --tls-key-file /tls/redis.key
+    --tls-ca-cert-file /tls/ca.crt
+    --tls-auth-clients no
   volumes:
     - redis-data:/data
+    - ./tls:/tls:ro
+  environment:
+    REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+# Client connection string: rediss://:${REDIS_PASSWORD}@redis:6380
 ```
 
 ### Cache Architecture
@@ -212,14 +228,12 @@ spec:
     version: 3.5.0
     replicas: 3
     listeners:
-      - name: plain
-        port: 9092
-        type: internal
-        tls: false
       - name: tls
         port: 9093
         type: internal
         tls: true
+        authentication:
+          type: scram-sha-512
     config:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
@@ -243,10 +257,10 @@ spec:
 EOF
 ```
 
-**Self-Hosted (Docker Compose with Redpanda):**
+**Self-Hosted (Docker Compose with Redpanda + Security):**
 ```yaml
 redpanda:
-  image: vectorized/redpanda:latest
+  image: vectorized/redpanda:v23.2.8  # Pinned version
   command:
     - redpanda
     - start
@@ -255,11 +269,122 @@ redpanda:
     - --reserve-memory 1G
     - --overprovisioned
     - --node-id 0
-    - --kafka-addr PLAINTEXT://0.0.0.0:9092
-    - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    - --kafka-addr SSL://0.0.0.0:9093
+    - --advertise-kafka-addr SSL://redpanda:9093
+    - --pandaproxy-addr 0.0.0.0:8082
   ports:
-    - "9092:9092"
+    - "9093:9093"
     - "9644:9644"
+    - "8082:8082"
+  volumes:
+    - ./redpanda-config.yaml:/etc/redpanda/redpanda.yaml
+    - ./tls:/etc/redpanda/tls:ro
+    - redpanda-data:/var/lib/redpanda/data
+
+# redpanda-config.yaml with SASL/TLS:
+# kafka_api:
+#   - address: 0.0.0.0
+#     port: 9093
+#     name: external
+#     authentication_method: sasl
+# kafka_api_tls:
+#   - enabled: true
+#     cert_file: /etc/redpanda/tls/server.crt
+#     key_file: /etc/redpanda/tls/server.key
+#     truststore_file: /etc/redpanda/tls/ca.crt
+```
+
+### Kafka Security (SASL/TLS Configuration)
+
+**Create SASL Users:**
+```bash
+# For Kafka (using Strimzi)
+kubectl apply -f - <<EOF
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: glyph-producer
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: glyph-foundry
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+    - resource:
+        type: topic
+        name: kg.
+        patternType: prefix
+      operation: Write
+    - resource:
+        type: topic
+        name: kg.
+        patternType: prefix
+      operation: Describe
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: glyph-consumer
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: glyph-foundry
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+    - resource:
+        type: topic
+        name: kg.
+        patternType: prefix
+      operation: Read
+    - resource:
+        type: topic
+        name: kg.
+        patternType: prefix
+      operation: Describe
+    - resource:
+        type: group
+        name: node-processor
+        patternType: literal
+      operation: Read
+EOF
+
+# Extract credentials
+kubectl get secret glyph-producer -n kafka -o jsonpath='{.data.password}' | base64 -d
+kubectl get secret glyph-consumer -n kafka -o jsonpath='{.data.password}' | base64 -d
+```
+
+**For Redpanda (Self-Hosted):**
+```bash
+# Create SASL user
+rpk security user create glyph-producer \
+  --password ${PRODUCER_PASSWORD} \
+  --api-urls localhost:9644
+
+rpk security user create glyph-consumer \
+  --password ${CONSUMER_PASSWORD} \
+  --api-urls localhost:9644
+
+# Create ACLs
+rpk security acl create \
+  --allow-principal User:glyph-producer \
+  --operation write,describe \
+  --topic "kg.*" \
+  --api-urls localhost:9644
+
+rpk security acl create \
+  --allow-principal User:glyph-consumer \
+  --operation read,describe \
+  --topic "kg.*" \
+  --group "node-processor" \
+  --api-urls localhost:9644
 ```
 
 ### Topic Configuration
@@ -355,19 +480,37 @@ doctl compute spaces bucket create \
   --region nyc3
 ```
 
-**Self-Hosted MinIO (Docker Compose):**
+**Self-Hosted MinIO (Docker Compose with Security):**
 ```yaml
 minio:
-  image: minio/minio:latest
+  image: minio/minio:RELEASE.2023-09-30T07-02-29Z  # Pinned version
   ports:
     - "9000:9000"
     - "9001:9001"
   environment:
     MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
     MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
-  command: server /data --console-address ":9001"
+    MINIO_SERVER_URL: https://minio.yourdomain.com
+    MINIO_BROWSER_REDIRECT_URL: https://console.minio.yourdomain.com
+  command: server /data --console-address ":9001" --certs-dir /certs
   volumes:
     - minio-data:/data
+    - ./certs:/certs:ro  # TLS certificates
+  healthcheck:
+    test: ["CMD", "curl", "-f", "https://localhost:9000/minio/health/live"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+# Distributed mode (4+ nodes recommended for production):
+minio1:
+  image: minio/minio:RELEASE.2023-09-30T07-02-29Z
+  command: server https://minio{1...4}/data --console-address ":9001" --certs-dir /certs
+  environment:
+    MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+    MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    MINIO_DISTRIBUTED_MODE_ENABLED: "yes"
+    MINIO_DISTRIBUTED_NODES: "https://minio{1...4}/data"
 ```
 
 ### Bucket Configuration
@@ -429,6 +572,46 @@ class S3StorageService:
 ---
 
 ## 5. Kubernetes Deployment
+
+### Secrets Management
+
+**Create Kubernetes Secrets:**
+```bash
+# PostgreSQL credentials
+kubectl create secret generic postgres-secret \
+  --from-literal=url="postgresql://user:pass@host:5432/db" \
+  -n glyph-foundry
+
+# Redis credentials
+kubectl create secret generic redis-secret \
+  --from-literal=url="redis://:password@redis:6379/0" \
+  --from-literal=password="${REDIS_PASSWORD}" \
+  -n glyph-foundry
+
+# MinIO/S3 credentials
+kubectl create secret generic minio-secret \
+  --from-literal=access-key="${MINIO_ACCESS_KEY}" \
+  --from-literal=secret-key="${MINIO_SECRET_KEY}" \
+  -n glyph-foundry
+
+# API keys (for service-to-service auth)
+kubectl create secret generic api-keys \
+  --from-literal=internal-api-key="${INTERNAL_API_KEY}" \
+  -n glyph-foundry
+```
+
+**Using Sealed Secrets (Recommended):**
+```bash
+# Install sealed-secrets controller
+kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.23.0/controller.yaml
+
+# Create a sealed secret
+echo -n "postgresql://..." | kubectl create secret generic postgres-secret \
+  --dry-run=client --from-file=url=/dev/stdin -o yaml | \
+  kubeseal -o yaml > postgres-sealed-secret.yaml
+
+kubectl apply -f postgres-sealed-secret.yaml -n glyph-foundry
+```
 
 ### Namespace & Network Policies
 
