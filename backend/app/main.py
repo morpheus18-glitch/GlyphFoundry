@@ -102,6 +102,14 @@ try:
 except ImportError as e:
     logging.warning(f"Glyph API not available: {e}")
 
+# Admin dashboard API
+try:
+    from .api.admin import router as admin_router
+    app.include_router(admin_router)
+    logging.info("Admin dashboard API loaded")
+except ImportError as e:
+    logging.warning(f"Admin API not available: {e}")
+
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,

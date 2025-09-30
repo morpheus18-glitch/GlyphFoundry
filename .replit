@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "bash", "rust-stable", "python-3.11", "postgresql-16"]
+modules = ["nodejs-20", "bash", "rust-stable", "python-3.11", "postgresql-16", "go-1.24"]
 [agent]
 expertMode = true
 integrations = ["python_log_in_with_replit:1.0.0"]
@@ -22,6 +22,10 @@ args = "Backend API"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Frontend Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Metrics Collector"
 
 [[workflows.workflow]]
 name = "Backend API"
@@ -47,6 +51,17 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Metrics Collector"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd metrics-collector && GLYPH_API_URL=http://localhost:8000 TENANT_ID=metrics-collector COLLECTION_INTERVAL=2s MAX_METRICS_PER_BATCH=50 ./bin/collector"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
@@ -54,6 +69,10 @@ externalPort = 80
 [[ports]]
 localPort = 8000
 externalPort = 8000
+
+[[ports]]
+localPort = 37633
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
