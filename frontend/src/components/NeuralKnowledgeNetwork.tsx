@@ -602,28 +602,12 @@ export default function NeuralKnowledgeNetwork({
   const [selected, setSelected] = useState<ApiNode | null>(null);
   const [recent, setRecent] = useState<ApiNode[]>([]);
   const [q, setQ] = useState("");
-  const [gpuInfo, setGpuInfo] = useState<{ checked: boolean; available: boolean }>({ checked: false, available: true });
+  const [gpuInfo, setGpuInfo] = useState<{ checked: boolean; available: boolean }>({ checked: true, available: true });
 
   // Worker + live positions
   const workerRef = useRef<Worker | null>(null);
   const posRef = useRef<Float32Array | null>(null);
   const idsRef = useRef<string[] | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      setGpuInfo({ checked: true, available: true });
-      return;
-    }
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      const available = detectHardwareAcceleration();
-      if (!cancelled) setGpuInfo({ checked: true, available });
-    }, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, []);
 
   // Fetch/props + boot worker
   useEffect(() => {
