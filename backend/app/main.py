@@ -94,6 +94,14 @@ try:
 except ImportError:
     pass
 
+# Glyph 4D visualization API
+try:
+    from .api.glyphs import router as glyphs_router
+    app.include_router(glyphs_router)
+    logging.info("Glyph 4D visualization API loaded")
+except ImportError as e:
+    logging.warning(f"Glyph API not available: {e}")
+
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
