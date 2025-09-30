@@ -1,0 +1,31 @@
+{
+  "conversationId": "test-conv-001",
+  "title": "Knowledge Graph Discussion",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What are the key benefits of using a knowledge graph for data visualization?",
+      "timestamp": "2025-09-30T02:30:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Knowledge graphs provide several key benefits for data visualization: 1) They enable multi-dimensional relationship mapping, 2) Support real-time querying across connected data, 3) Facilitate pattern discovery through graph algorithms, 4) Allow semantic search and contextual navigation, and 5) Enable scalable visualization of complex interconnections.",
+      "timestamp": "2025-09-30T02:30:45Z"
+    },
+    {
+      "role": "user",
+      "content": "How does 4D visualization enhance knowledge graph exploration?",
+      "timestamp": "2025-09-30T02:31:30Z"
+    },
+    {
+      "role": "assistant",
+      "content": "4D visualization adds time as the fourth dimension, transforming static graphs into dynamic systems. This allows you to observe knowledge evolution over time, track temporal relationships, identify emerging patterns, and understand data flow chronologically. It's particularly powerful for observability and monitoring use cases.",
+      "timestamp": "2025-09-30T02:32:15Z"
+    }
+  ],
+  "metadata": {
+    "source": "claude",
+    "model": "claude-3-5-sonnet",
+    "created_at": "2025-09-30T02:30:00Z"
+  }
+}

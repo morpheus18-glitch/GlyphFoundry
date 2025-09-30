@@ -1,0 +1,25 @@
+{
+  "name": "glyph-foundry-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for ingesting ChatGPT/Claude conversations into Glyph Foundry knowledge graph",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "glyph-mcp-server": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod 755 build/index.js",
+    "dev": "tsc && node build/index.js",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

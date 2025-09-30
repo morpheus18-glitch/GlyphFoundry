@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ingest_conversation","arguments":{"conversation_data":"{\"conversationId\":\"test-001\",\"title\":\"Test\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\",\"timestamp\":\"2025-09-30T02:30:00Z\"},{\"role\":\"assistant\",\"content\":\"Hi there!\",\"timestamp\":\"2025-09-30T02:30:05Z\"}]}","source":"claude"}}}
