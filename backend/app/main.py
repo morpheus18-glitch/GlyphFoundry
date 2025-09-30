@@ -126,6 +126,21 @@ try:
 except ImportError as e:
     logging.warning(f"Accounts API not available: {e}")
 
+# Core API v1 endpoints
+try:
+    from .api.overview import router as overview_router
+    from .api.nodes import router as nodes_router
+    from .api.embeddings import router as embeddings_router
+    from .api.settings import router as settings_router
+    
+    app.include_router(overview_router, prefix="/api/v1")
+    app.include_router(nodes_router, prefix="/api/v1")
+    app.include_router(embeddings_router, prefix="/api/v1")
+    app.include_router(settings_router, prefix="/api/v1")
+    logging.info("Core API v1 endpoints loaded")
+except ImportError as e:
+    logging.warning(f"Core API v1 endpoints not available: {e}")
+
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
