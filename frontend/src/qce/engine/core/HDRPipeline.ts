@@ -87,7 +87,13 @@ export class HDRPipeline {
 
     if (!this.color) this.color = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.color);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, this.width, this.height, 0, gl.RGBA, gl.FLOAT, null);
+    
+    // Try RGBA16F first, fallback to RGBA8 if not supported
+    const ext = gl.getExtension('EXT_color_buffer_float');
+    const internalFormat = ext ? gl.RGBA16F : gl.RGBA;
+    const type = ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
+    
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, this.width, this.height, 0, gl.RGBA, type, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -96,12 +102,21 @@ export class HDRPipeline {
 
     if (!this.depth) this.depth = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, this.depth);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, this.width, this.height);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, this.width, this.height);
     gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.depth);
 
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     if (status !== gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error(`HDR framebuffer incomplete: 0x${status.toString(16)}`);
+      console.error(`Framebuffer incomplete: 0x${status.toString(16)}, using fallback`);
+      // Fallback: use simpler RGBA8 format
+      gl.bindTexture(gl.TEXTURE_2D, this.color);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.color, 0);
+      
+      const fallbackStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      if (fallbackStatus !== gl.FRAMEBUFFER_COMPLETE) {
+        throw new Error(`Framebuffer still incomplete after fallback: 0x${fallbackStatus.toString(16)}`);
+      }
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
