@@ -644,6 +644,158 @@ CREATE INDEX IF NOT EXISTS file_chunks_file_idx ON file_chunks(file_id);
 CREATE INDEX IF NOT EXISTS file_chunks_tenant_idx ON file_chunks(tenant_id);
 
 -- =====================================================================
+-- USER PERSONALIZATION & SETTINGS
+-- =====================================================================
+
+-- User preferences and settings
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- UI/UX preferences
+    theme TEXT DEFAULT 'dark',
+    language TEXT DEFAULT 'en',
+    timezone TEXT DEFAULT 'UTC',
+    notifications_enabled BOOLEAN DEFAULT true,
+    
+    -- Display preferences
+    dashboard_layout JSONB DEFAULT '{}'::jsonb,
+    default_view TEXT DEFAULT 'graph',
+    items_per_page INTEGER DEFAULT 50,
+    
+    -- Privacy settings
+    profile_visibility TEXT DEFAULT 'private',
+    data_sharing_enabled BOOLEAN DEFAULT false,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    UNIQUE(user_id, tenant_id)
+);
+
+CREATE INDEX IF NOT EXISTS user_preferences_user_idx ON user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS user_preferences_tenant_idx ON user_preferences(tenant_id);
+
+-- Custom instructions and prompts
+CREATE TABLE IF NOT EXISTS custom_instructions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    name TEXT NOT NULL,
+    description TEXT,
+    instruction_type TEXT NOT NULL, -- 'system', 'user', 'assistant', 'tool'
+    content TEXT NOT NULL,
+    
+    -- Tuning parameters
+    temperature FLOAT DEFAULT 0.7,
+    max_tokens INTEGER DEFAULT 2000,
+    top_p FLOAT DEFAULT 0.9,
+    frequency_penalty FLOAT DEFAULT 0.0,
+    presence_penalty FLOAT DEFAULT 0.0,
+    
+    -- Metadata
+    is_active BOOLEAN DEFAULT true,
+    usage_count INTEGER DEFAULT 0,
+    last_used_at TIMESTAMPTZ,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    UNIQUE(user_id, tenant_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS custom_instructions_user_idx ON custom_instructions(user_id);
+CREATE INDEX IF NOT EXISTS custom_instructions_tenant_idx ON custom_instructions(tenant_id);
+CREATE INDEX IF NOT EXISTS custom_instructions_active_idx ON custom_instructions(is_active) WHERE is_active = true;
+
+-- Learned user profiles (semantic knowledge foundry)
+CREATE TABLE IF NOT EXISTS learned_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- Profile data
+    interests TEXT[] DEFAULT ARRAY[]::TEXT[],
+    expertise_areas TEXT[] DEFAULT ARRAY[]::TEXT[],
+    communication_style TEXT,
+    preferred_topics TEXT[] DEFAULT ARRAY[]::TEXT[],
+    
+    -- Behavioral patterns
+    activity_patterns JSONB DEFAULT '{}'::jsonb,
+    interaction_frequency JSONB DEFAULT '{}'::jsonb,
+    common_queries TEXT[] DEFAULT ARRAY[]::TEXT[],
+    
+    -- Semantic embeddings
+    profile_embedding vector(384),
+    
+    -- Learning metadata
+    confidence_score FLOAT DEFAULT 0.0,
+    total_interactions INTEGER DEFAULT 0,
+    last_interaction_at TIMESTAMPTZ,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    UNIQUE(user_id, tenant_id)
+);
+
+CREATE INDEX IF NOT EXISTS learned_profiles_user_idx ON learned_profiles(user_id);
+CREATE INDEX IF NOT EXISTS learned_profiles_tenant_idx ON learned_profiles(tenant_id);
+CREATE INDEX IF NOT EXISTS learned_profiles_embedding_idx ON learned_profiles 
+    USING ivfflat (profile_embedding vector_cosine_ops) WITH (lists = 100);
+
+-- User interaction history (for learning)
+CREATE TABLE IF NOT EXISTS user_interactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    interaction_type TEXT NOT NULL, -- 'query', 'upload', 'edit', 'share', 'feedback'
+    content TEXT,
+    context JSONB DEFAULT '{}'::jsonb,
+    
+    -- Sentiment and feedback
+    sentiment TEXT, -- 'positive', 'neutral', 'negative'
+    feedback_score INTEGER, -- 1-5 rating
+    
+    -- Related entities
+    node_id UUID REFERENCES nodes_v2(id) ON DELETE SET NULL,
+    file_id UUID REFERENCES files(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS user_interactions_user_idx ON user_interactions(user_id);
+CREATE INDEX IF NOT EXISTS user_interactions_tenant_idx ON user_interactions(tenant_id);
+CREATE INDEX IF NOT EXISTS user_interactions_type_idx ON user_interactions(interaction_type);
+CREATE INDEX IF NOT EXISTS user_interactions_created_idx ON user_interactions(created_at DESC);
+
+-- User semantic search history
+CREATE TABLE IF NOT EXISTS search_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    query TEXT NOT NULL,
+    query_embedding vector(384),
+    results_count INTEGER,
+    
+    -- Personalization
+    used_filters JSONB DEFAULT '{}'::jsonb,
+    clicked_results UUID[], -- Array of node IDs clicked
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS search_history_user_idx ON search_history(user_id);
+CREATE INDEX IF NOT EXISTS search_history_tenant_idx ON search_history(tenant_id);
+CREATE INDEX IF NOT EXISTS search_history_created_idx ON search_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS search_history_embedding_idx ON search_history 
+    USING ivfflat (query_embedding vector_cosine_ops) WITH (lists = 100);
+
+-- =====================================================================
 -- INITIAL SEED DATA (DEFAULT TENANT)
 -- =====================================================================
 

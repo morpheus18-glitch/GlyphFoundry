@@ -52,6 +52,21 @@ ALTER TABLE files FORCE ROW LEVEL SECURITY;
 ALTER TABLE file_chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE file_chunks FORCE ROW LEVEL SECURITY;
 
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE custom_instructions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE custom_instructions FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE learned_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE learned_profiles FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE user_interactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_interactions FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE search_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE search_history FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
 
@@ -148,6 +163,71 @@ CREATE POLICY tenant_isolation ON file_chunks
     FOR ALL
     USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
     WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+-- User preferences (user can only access their own)
+CREATE POLICY tenant_isolation ON user_preferences
+    FOR ALL
+    USING (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        (user_id = current_setting('app.user_id', true)::uuid OR 
+         current_setting('app.user_role', true) = 'admin')
+    )
+    WITH CHECK (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        user_id = current_setting('app.user_id', true)::uuid
+    );
+
+-- Custom instructions (user can only access their own)
+CREATE POLICY tenant_isolation ON custom_instructions
+    FOR ALL
+    USING (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        (user_id = current_setting('app.user_id', true)::uuid OR 
+         current_setting('app.user_role', true) = 'admin')
+    )
+    WITH CHECK (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        user_id = current_setting('app.user_id', true)::uuid
+    );
+
+-- Learned profiles (user can only access their own)
+CREATE POLICY tenant_isolation ON learned_profiles
+    FOR ALL
+    USING (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        (user_id = current_setting('app.user_id', true)::uuid OR 
+         current_setting('app.user_role', true) = 'admin')
+    )
+    WITH CHECK (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        user_id = current_setting('app.user_id', true)::uuid
+    );
+
+-- User interactions (user can only access their own)
+CREATE POLICY tenant_isolation ON user_interactions
+    FOR ALL
+    USING (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        (user_id = current_setting('app.user_id', true)::uuid OR 
+         current_setting('app.user_role', true) = 'admin')
+    )
+    WITH CHECK (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        user_id = current_setting('app.user_id', true)::uuid
+    );
+
+-- Search history (user can only access their own)
+CREATE POLICY tenant_isolation ON search_history
+    FOR ALL
+    USING (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        (user_id = current_setting('app.user_id', true)::uuid OR 
+         current_setting('app.user_role', true) = 'admin')
+    )
+    WITH CHECK (
+        tenant_id = current_setting('app.tenant_id', true)::uuid AND
+        user_id = current_setting('app.user_id', true)::uuid
+    );
 
 -- Audit log (strict tenant isolation - no bypass)
 CREATE POLICY tenant_isolation ON audit_log

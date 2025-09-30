@@ -118,6 +118,14 @@ try:
 except ImportError as e:
     logging.warning(f"File upload API not available: {e}")
 
+# User accounts and personalization API
+try:
+    from .api.accounts import router as accounts_router
+    app.include_router(accounts_router)
+    logging.info("Accounts API loaded")
+except ImportError as e:
+    logging.warning(f"Accounts API not available: {e}")
+
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
