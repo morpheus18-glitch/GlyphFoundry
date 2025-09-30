@@ -628,11 +628,11 @@ export default function NeuralKnowledgeNetwork({
   // Fetch/props + boot worker
   useEffect(() => {
     let active = true;
-    if (!gpuInfo.checked) return () => {
-      active = false;
-    };
-
+    
     async function boot() {
+      if (!gpuInfo.checked) {
+        return;
+      }
       try {
         setLoading(true);
 
