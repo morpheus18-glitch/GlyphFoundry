@@ -1,6 +1,6 @@
 #!/bin/bash
 # Enterprise deployment script for fitwellfast.com
-# Run this on your droplet: ./deploy.sh
+# Run this on your droplet: chmod +x deploy.sh && sudo ./deploy.sh
 
 set -e  # Exit on error
 
@@ -17,10 +17,21 @@ DOMAIN="fitwellfast.com"
 EMAIL="admin@fitwellfast.com"  # Change this to your email
 PROJECT_DIR="/root/glyph-foundry"
 
+# Detect docker compose command (v1 vs v2)
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+elif docker-compose --version &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    echo "❌ Docker Compose not found"
+    exit 1
+fi
+echo "Using: $DOCKER_COMPOSE"
+
 # Step 1: Install dependencies
 echo "📦 Installing system dependencies..."
-apt-get update
-apt-get install -y docker.io docker-compose certbot python3-certbot-nginx git curl
+apt-get update -qq
+apt-get install -y docker.io certbot python3-certbot-nginx git curl
 
 # Step 2: Enable and start Docker
 echo "🐳 Configuring Docker..."
@@ -37,7 +48,7 @@ if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
     echo "🔒 Setting up SSL certificates..."
     
     # Stop any running nginx
-    docker-compose down edge 2>/dev/null || true
+    $DOCKER_COMPOSE down edge 2>/dev/null || true
     
     # Run certbot in standalone mode
     certbot certonly --standalone \
@@ -54,15 +65,15 @@ fi
 
 # Step 5: Build images
 echo "🔨 Building Docker images..."
-docker-compose build --no-cache
+$DOCKER_COMPOSE build --no-cache
 
 # Step 6: Stop old containers
 echo "🛑 Stopping old containers..."
-docker-compose down
+$DOCKER_COMPOSE down
 
 # Step 7: Start services
 echo "▶️  Starting services..."
-docker-compose up -d
+$DOCKER_COMPOSE up -d
 
 # Step 8: Wait for services to be healthy
 echo "⏳ Waiting for services to be healthy..."
@@ -73,14 +84,15 @@ if curl -sf http://localhost:8000/healthz > /dev/null; then
     echo "✅ Backend is healthy"
 else
     echo "❌ Backend health check failed"
-    docker-compose logs backend
+    $DOCKER_COMPOSE logs backend
     exit 1
 fi
 
 # Step 9: Setup auto-renewal for SSL
 echo "🔄 Setting up SSL auto-renewal..."
-cat > /etc/cron.d/certbot-renewal << 'EOF'
-0 3 * * * root certbot renew --quiet --deploy-hook "docker-compose -f /root/glyph-foundry/docker-compose.yml restart edge"
+COMPOSE_CMD=$(echo "$DOCKER_COMPOSE" | sed 's/ /%20/g')
+cat > /etc/cron.d/certbot-renewal << EOF
+0 3 * * * root certbot renew --quiet --deploy-hook "cd $PROJECT_DIR && $DOCKER_COMPOSE restart edge"
 EOF
 
 # Step 10: Display status
@@ -88,16 +100,16 @@ echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "📊 Service Status:"
-docker-compose ps
+$DOCKER_COMPOSE ps
 echo ""
 echo "🌐 Your app is now live at:"
 echo "   https://$DOMAIN"
 echo ""
 echo "📝 Useful commands:"
-echo "   View logs:     docker-compose logs -f"
-echo "   Restart:       docker-compose restart"
-echo "   Stop:          docker-compose down"
-echo "   Rebuild:       docker-compose up -d --build"
+echo "   View logs:     $DOCKER_COMPOSE logs -f"
+echo "   Restart:       $DOCKER_COMPOSE restart"
+echo "   Stop:          $DOCKER_COMPOSE down"
+echo "   Rebuild:       $DOCKER_COMPOSE up -d --build"
 echo ""
 echo "🔍 Check backend:  curl https://$DOMAIN/healthz"
 echo "🔍 Check frontend: curl https://$DOMAIN/"
