@@ -71,6 +71,10 @@ Preferred communication style: Simple, everyday language.
 - **NumPy/Pandas**: Numerical computing and data manipulation
 
 ### Monitoring & Observability
+- **4D Glyph System**: Advanced visualization with time as the 4th dimension for temporal analysis
+- **Go Metrics Collector**: High-performance system metrics collection (CPU, memory, network, disk)
+- **Admin Dashboard**: Real-time monitoring interface with React/TypeScript frontend
+- **MCP Server**: Model Context Protocol integration for ChatGPT/Claude conversation ingestion
 - **Prometheus**: Metrics collection and worker health monitoring
 - **APScheduler**: Cron-like job scheduling for maintenance tasks
 
@@ -84,3 +88,47 @@ Preferred communication style: Simple, everyday language.
 - **React Three Fiber**: React integration for Three.js scenes
 - **D3-Force**: Force simulation algorithms for graph layout
 - **PostProcessing**: Cinematic effects and shader pipeline management
+
+## Recent Additions (September 2025)
+
+### 4D Glyph Visualization System
+- **Purpose**: Time-dimensional knowledge graph visualization for advanced observability
+- **Backend**: Python with deterministic blake2b hash-based spatial positioning
+- **Frontend**: TypeScript/React with instanced rendering for 10,000+ glyphs
+- **Features**: Temporal navigation, LOD optimization, custom 4D shaders with fresnel effects
+- **API**: 7 FastAPI endpoints for glyph generation, temporal slicing, WebGL buffers, and timeline aggregation
+
+### High-Performance Metrics Collection
+- **Go Collector**: 8.7MB binary with gopsutil for system metrics
+- **Performance**: Collects 34 metrics every 2 seconds with batching and buffering
+- **Protocol Handlers**: Automatically converts metrics to 4D glyphs (CPU, memory, network, disk)
+- **Architecture**: 4 worker goroutines with graceful shutdown
+- **Configuration**: Environment-based with GLYPH_API_URL and tenant isolation
+
+### Admin Dashboard
+- **Backend API**: 7 FastAPI endpoints for monitoring and configuration
+- **Frontend**: React/TypeScript with real-time statistics
+- **Features**: Collector status, glyph distribution, spatial clustering, temporal analytics
+- **Metrics**: Total metrics collected, generation rate, active collectors, protocol status
+
+### MCP Server (Model Context Protocol)
+- **Purpose**: Ingest ChatGPT and Claude conversations into knowledge graph
+- **Implementation**: TypeScript with @modelcontextprotocol/sdk
+- **Transport**: stdio (JSON-RPC 2.0) for Claude Desktop integration
+- **Tools**: 3 MCP tools (ingest_conversation, create_conversation_glyphs, analyze_conversation)
+- **Features**: Automatic glyph generation, conversation analysis, multi-tenant support
+- **Integration**: Direct API connection with tenant isolation via headers
+
+### Data Flow Pipeline
+```
+System Metrics → Go Collector → Protocol Handlers → Glyph API → 4D Visualization
+ChatGPT/Claude → MCP Server → Conversation Parser → Glyph API → Knowledge Graph
+```
+
+### Production Notes
+- All systems tested and operational
+- Metrics collector generating glyphs in real-time
+- MCP server successfully ingests conversations
+- Admin dashboard provides live monitoring
+- Multi-tenant isolation implemented via headers
+- Future hardening: authentication, persistent storage, worker pool parallelism
