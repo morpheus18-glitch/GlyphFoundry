@@ -72,7 +72,23 @@ END $$;
 
 DO $$ BEGIN
     CREATE TYPE obj_type_enum AS ENUM (
-        'glyph', 'message', 'node', 'tag', 'document'
+        'glyph', 'message', 'node', 'tag', 'document', 'file'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE file_type_enum AS ENUM (
+        'image', 'document', 'video', 'audio', 'csv', 'json', 'text', 'other'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE processing_status_enum AS ENUM (
+        'pending', 'processing', 'completed', 'failed'
     );
 EXCEPTION
     WHEN duplicate_object THEN null;
@@ -553,6 +569,79 @@ BEGIN
             FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 END $$;
+
+-- =====================================================================
+-- FILE STORAGE & MULTI-MODAL INGESTION
+-- =====================================================================
+
+-- Files table for storing uploaded content (images, documents, CSV, JSON, etc.)
+CREATE TABLE IF NOT EXISTS files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- File metadata
+    filename TEXT NOT NULL,
+    original_filename TEXT NOT NULL,
+    file_type file_type_enum NOT NULL,
+    mime_type TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL,
+    
+    -- Storage location
+    storage_path TEXT NOT NULL,  -- S3/MinIO path
+    storage_url TEXT,  -- Presigned URL if applicable
+    thumbnail_path TEXT,  -- For images/videos
+    
+    -- Processing status
+    processing_status processing_status_enum NOT NULL DEFAULT 'pending',
+    processing_error TEXT,
+    
+    -- Extracted content
+    extracted_text TEXT,  -- OCR from images, text from PDFs/DOCX
+    structured_data JSONB,  -- Parsed JSON/CSV data
+    
+    -- Relationships
+    node_id UUID REFERENCES nodes_v2(id) ON DELETE SET NULL,  -- Link to knowledge graph
+    
+    -- Metadata
+    metadata JSONB DEFAULT '{}'::jsonb,
+    uploaded_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ
+);
+
+-- Indexes for file queries
+CREATE INDEX IF NOT EXISTS files_tenant_idx ON files(tenant_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS files_type_idx ON files(file_type, tenant_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS files_status_idx ON files(processing_status) WHERE processing_status != 'completed';
+CREATE INDEX IF NOT EXISTS files_node_idx ON files(node_id) WHERE node_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS files_created_idx ON files(tenant_id, created_at DESC) WHERE deleted_at IS NULL;
+
+-- Full-text search on extracted text
+CREATE INDEX IF NOT EXISTS files_extracted_text_idx ON files USING gin(to_tsvector('english', extracted_text))
+    WHERE extracted_text IS NOT NULL AND deleted_at IS NULL;
+
+-- GIN index for structured data queries
+CREATE INDEX IF NOT EXISTS files_structured_data_idx ON files USING gin(structured_data)
+    WHERE structured_data IS NOT NULL;
+
+-- File chunks for large file processing (split large files into chunks)
+CREATE TABLE IF NOT EXISTS file_chunks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    chunk_index INTEGER NOT NULL,
+    chunk_text TEXT NOT NULL,
+    chunk_metadata JSONB DEFAULT '{}'::jsonb,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    UNIQUE(file_id, chunk_index)
+);
+
+CREATE INDEX IF NOT EXISTS file_chunks_file_idx ON file_chunks(file_id);
+CREATE INDEX IF NOT EXISTS file_chunks_tenant_idx ON file_chunks(tenant_id);
 
 -- =====================================================================
 -- INITIAL SEED DATA (DEFAULT TENANT)

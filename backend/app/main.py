@@ -110,6 +110,14 @@ try:
 except ImportError as e:
     logging.warning(f"Admin API not available: {e}")
 
+# File upload and multi-modal ingestion API
+try:
+    from .api.files import router as files_router
+    app.include_router(files_router)
+    logging.info("File upload API loaded")
+except ImportError as e:
+    logging.warning(f"File upload API not available: {e}")
+
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
