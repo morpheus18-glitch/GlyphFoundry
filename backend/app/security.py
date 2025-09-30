@@ -56,9 +56,11 @@ class EnterpriseSecurityManager:
         master_key_b64 = os.environ.get("MASTER_ENCRYPTION_KEY")
         
         if not master_key_b64:
-            # For development only - use a fixed development key
-            if os.environ.get("ENVIRONMENT", "").lower() in ["development", "dev", "local"]:
-                logger.warning("Using development master key - NOT suitable for production")
+            # For development - use a fixed development key with warning
+            environment = os.environ.get("ENVIRONMENT", "development").lower()
+            if environment in ["development", "dev", "local", ""]:
+                logger.warning("⚠️  Using development master key - NOT suitable for production!")
+                logger.warning("Set MASTER_ENCRYPTION_KEY environment variable for production use")
                 dev_key = "x" * 44  # base64-encoded 32 bytes of 'x'
                 return base64.b64decode(dev_key + "==")
             

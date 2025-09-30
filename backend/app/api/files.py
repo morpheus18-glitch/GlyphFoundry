@@ -15,6 +15,7 @@ import io
 import mimetypes
 from datetime import datetime, timedelta
 import hashlib
+import logging
 
 from ..db import get_db
 from sqlalchemy import text
@@ -69,13 +70,18 @@ try:
         secure=MINIO_SECURE
     )
     
-    # Ensure bucket exists
-    if not minio_client.bucket_exists(MINIO_BUCKET):
-        minio_client.make_bucket(MINIO_BUCKET)
+    # Ensure bucket exists (with connection check)
+    try:
+        if not minio_client.bucket_exists(MINIO_BUCKET):
+            minio_client.make_bucket(MINIO_BUCKET)
+        logging.info(f"MinIO storage available at {MINIO_ENDPOINT}")
+    except Exception as conn_error:
+        logging.warning(f"MinIO not available ({conn_error}), using local storage fallback")
+        minio_client = None
         
 except ImportError:
     minio_client = None
-    print("MinIO not installed. File storage will use local filesystem.")
+    logging.warning("MinIO not installed. File storage will use local filesystem.")
 
 
 def upload_to_storage(file: UploadFile, tenant_id: str, file_id: str) -> tuple[str, str]:
