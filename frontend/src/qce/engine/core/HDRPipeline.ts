@@ -27,8 +27,8 @@ vec3 aces(vec3 x){
     -0.00327, -0.07276,  1.07602
   );
   x = ACESInputMat * x;
-  const vec3 a = x * (x + 0.0245786) - 0.000090537;
-  const vec3 b = x * (0.983729 * x + 0.4329510) + 0.238081;
+  vec3 a = x * (x + 0.0245786) - 0.000090537;
+  vec3 b = x * (0.983729 * x + 0.4329510) + 0.238081;
   vec3 c = a / b;
   c = ACESOutputMat * c;
   return clamp(c, 0.0, 1.0);
