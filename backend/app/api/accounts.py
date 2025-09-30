@@ -9,25 +9,12 @@ from typing import Optional, List, Dict, Any
 import uuid
 import json
 from datetime import datetime
+import hashlib
 
 from ..db import get_db
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
-
-def get_current_user_context(request: Request) -> Dict[str, str]:
-    """Extract user and tenant context from headers"""
-    tenant_id = request.headers.get("X-Tenant-ID", "00000000-0000-0000-0000-000000000000")
-    user_id = request.headers.get("X-User-ID")
-    user_role = request.headers.get("X-User-Role", "user")
-    
-    if not user_id:
-        raise HTTPException(status_code=401, detail="User authentication required")
-    
-    return {
-        "tenant_id": tenant_id,
-        "user_id": user_id,
-        "user_role": user_role
-    }
 
 def set_user_context(db: Session, tenant_id: str, user_id: str, user_role: str = "user"):
     """Set RLS context for the current session"""
@@ -42,15 +29,30 @@ def set_user_context(db: Session, tenant_id: str, user_id: str, user_role: str =
 
 @router.post("/register")
 def register_user(
-    request: Request,
     email: str = Body(...),
     name: str = Body(None),
     password: str = Body(...),
+    tenant_id: Optional[str] = Body(None),
     db: Session = Depends(get_db)
 ):
-    """Register a new user account"""
-    context = get_current_user_context(request)
-    tenant_id = context["tenant_id"]
+    """Register a new user account (public endpoint - no auth required)"""
+    # Use provided tenant_id or create new tenant
+    if not tenant_id:
+        tenant_id = str(uuid.uuid4())
+        # Create tenant
+        tenant_query = text("""
+            INSERT INTO tenants (id, slug, name, status)
+            VALUES (:id, :slug, :name, 'active')
+            ON CONFLICT (id) DO NOTHING
+        """)
+        db.execute(tenant_query, {
+            "id": tenant_id,
+            "slug": email.split('@')[0],
+            "name": name or email
+        })
+    
+    # Hash password
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
     
     # Check if user already exists
     check_query = text("SELECT id FROM users WHERE email = :email AND tenant_id = :tenant_id")
@@ -59,12 +61,12 @@ def register_user(
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
     
-    # Create user (password should be hashed in production)
+    # Create user
     user_id = str(uuid.uuid4())
     
     insert_query = text("""
-        INSERT INTO users (id, tenant_id, email, name, role)
-        VALUES (:id, :tenant_id, :email, :name, :role)
+        INSERT INTO users (id, tenant_id, email, name, role, metadata)
+        VALUES (:id, :tenant_id, :email, :name, :role, :metadata::jsonb)
         RETURNING id, email, name, role, created_at
     """)
     
@@ -73,7 +75,8 @@ def register_user(
         "tenant_id": tenant_id,
         "email": email,
         "name": name,
-        "role": "user"
+        "role": "user",
+        "metadata": json.dumps({"password_hash": password_hash})
     })
     
     user = result.fetchone()
@@ -105,21 +108,21 @@ def register_user(
         "email": user[1],
         "name": user[2],
         "role": user[3],
+        "tenant_id": tenant_id,
         "created_at": user[4].isoformat()
     }
 
 
 @router.get("/profile")
 def get_user_profile(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get current user's profile"""
-    context = get_current_user_context(request)
-    set_user_context(db, context["tenant_id"], context["user_id"], context["user_role"])
+    set_user_context(db, current_user["tenant_id"], str(current_user["id"]), current_user.get("role", "user"))
     
     query = text("""
-        SELECT u.id, u.email, u.name, u.role, u.metadata, u.created_at,
+        SELECT u.id, u.email, u.name, u.role, u.created_at,
                up.theme, up.language, up.timezone, up.dashboard_layout,
                up.default_view, up.items_per_page, up.profile_visibility
         FROM users u
@@ -128,8 +131,8 @@ def get_user_profile(
     """)
     
     result = db.execute(query, {
-        "user_id": context["user_id"],
-        "tenant_id": context["tenant_id"]
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"]
     }).fetchone()
     
     if not result:
@@ -140,16 +143,15 @@ def get_user_profile(
         "email": result[1],
         "name": result[2],
         "role": result[3],
-        "metadata": json.loads(result[4]) if result[4] else {},
-        "created_at": result[5].isoformat() if result[5] else None,
+        "created_at": result[4].isoformat() if result[4] else None,
         "preferences": {
-            "theme": result[6],
-            "language": result[7],
-            "timezone": result[8],
-            "dashboard_layout": json.loads(result[9]) if result[9] else {},
-            "default_view": result[10],
-            "items_per_page": result[11],
-            "profile_visibility": result[12]
+            "theme": result[5],
+            "language": result[6],
+            "timezone": result[7],
+            "dashboard_layout": json.loads(result[8]) if result[8] else {},
+            "default_view": result[9],
+            "items_per_page": result[10],
+            "profile_visibility": result[11]
         }
     }
 
@@ -160,7 +162,7 @@ def get_user_profile(
 
 @router.put("/preferences")
 def update_preferences(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     theme: Optional[str] = Body(None),
     language: Optional[str] = Body(None),
     timezone: Optional[str] = Body(None),
@@ -170,11 +172,10 @@ def update_preferences(
     db: Session = Depends(get_db)
 ):
     """Update user preferences"""
-    context = get_current_user_context(request)
-    set_user_context(db, context["tenant_id"], context["user_id"], context["user_role"])
+    set_user_context(db, current_user["tenant_id"], str(current_user["id"]), current_user.get("role", "user"))
     
     updates = []
-    params = {"user_id": context["user_id"], "tenant_id": context["tenant_id"]}
+    params = {"user_id": str(current_user["id"]), "tenant_id": current_user["tenant_id"]}
     
     if theme is not None:
         updates.append("theme = :theme")
@@ -222,7 +223,7 @@ def update_preferences(
 
 @router.post("/instructions")
 def create_custom_instruction(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     name: str = Body(...),
     content: str = Body(...),
     description: Optional[str] = Body(None),
@@ -233,8 +234,7 @@ def create_custom_instruction(
     db: Session = Depends(get_db)
 ):
     """Create custom instruction/prompt with tuning parameters"""
-    context = get_current_user_context(request)
-    set_user_context(db, context["tenant_id"], context["user_id"], context["user_role"])
+    set_user_context(db, current_user["tenant_id"], str(current_user["id"]), current_user.get("role", "user"))
     
     query = text("""
         INSERT INTO custom_instructions (
@@ -249,8 +249,8 @@ def create_custom_instruction(
     """)
     
     result = db.execute(query, {
-        "user_id": context["user_id"],
-        "tenant_id": context["tenant_id"],
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"],
         "name": name,
         "description": description,
         "type": instruction_type,
@@ -273,13 +273,12 @@ def create_custom_instruction(
 
 @router.get("/instructions")
 def list_custom_instructions(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
     """List all custom instructions for the user"""
-    context = get_current_user_context(request)
-    set_user_context(db, context["tenant_id"], context["user_id"], context["user_role"])
+    set_user_context(db, current_user["tenant_id"], str(current_user["id"]), current_user.get("role", "user"))
     
     query = text("""
         SELECT id, name, description, instruction_type, content,
@@ -291,8 +290,8 @@ def list_custom_instructions(
     """)
     
     results = db.execute(query, {
-        "user_id": context["user_id"],
-        "tenant_id": context["tenant_id"]
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"]
     }).fetchall()
     
     return {
@@ -323,12 +322,11 @@ def list_custom_instructions(
 
 @router.get("/learned-profile")
 def get_learned_profile(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get user's learned profile and behavioral patterns"""
-    context = get_current_user_context(request)
-    set_user_context(db, context["tenant_id"], context["user_id"], context["user_role"])
+    set_user_context(db, current_user["tenant_id"], str(current_user["id"]), current_user.get("role", "user"))
     
     query = text("""
         SELECT interests, expertise_areas, communication_style, preferred_topics,
@@ -339,8 +337,8 @@ def get_learned_profile(
     """)
     
     result = db.execute(query, {
-        "user_id": context["user_id"],
-        "tenant_id": context["tenant_id"]
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"]
     }).fetchone()
     
     if not result:
@@ -372,7 +370,7 @@ def get_learned_profile(
 
 @router.post("/interactions")
 def log_interaction(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     interaction_type: str = Body(...),
     content: Optional[str] = Body(None),
     context_data: Optional[Dict] = Body(None),
@@ -382,8 +380,7 @@ def log_interaction(
     db: Session = Depends(get_db)
 ):
     """Log user interaction for learning"""
-    ctx = get_current_user_context(request)
-    set_user_context(db, ctx["tenant_id"], ctx["user_id"], ctx["user_role"])
+    set_user_context(db, current_user["tenant_id"], str(current_user["id"]), current_user.get("role", "user"))
     
     query = text("""
         INSERT INTO user_interactions (
@@ -398,8 +395,8 @@ def log_interaction(
     """)
     
     result = db.execute(query, {
-        "user_id": ctx["user_id"],
-        "tenant_id": ctx["tenant_id"],
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"],
         "type": interaction_type,
         "content": content,
         "context": json.dumps(context_data or {}),
@@ -419,8 +416,8 @@ def log_interaction(
     """)
     
     db.execute(update_query, {
-        "user_id": ctx["user_id"],
-        "tenant_id": ctx["tenant_id"]
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"]
     })
     
     db.commit()
@@ -437,12 +434,11 @@ def log_interaction(
 
 @router.get("/dashboard")
 def get_user_dashboard(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get personalized user dashboard with stats and insights"""
-    context = get_current_user_context(request)
-    set_user_context(db, context["tenant_id"], context["user_id"], context["user_role"])
+    set_user_context(db, current_user["tenant_id"], str(current_user["id"]), current_user.get("role", "user"))
     
     # User stats
     stats_query = text("""
@@ -455,8 +451,8 @@ def get_user_dashboard(
     """)
     
     stats = db.execute(stats_query, {
-        "user_id": context["user_id"],
-        "tenant_id": context["tenant_id"]
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"]
     }).fetchone()
     
     # Recent activity
@@ -469,8 +465,8 @@ def get_user_dashboard(
     """)
     
     activity = db.execute(activity_query, {
-        "user_id": context["user_id"],
-        "tenant_id": context["tenant_id"]
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"]
     }).fetchall()
     
     # Popular searches
@@ -484,8 +480,8 @@ def get_user_dashboard(
     """)
     
     searches = db.execute(search_query, {
-        "user_id": context["user_id"],
-        "tenant_id": context["tenant_id"]
+        "user_id": str(current_user["id"]),
+        "tenant_id": current_user["tenant_id"]
     }).fetchall()
     
     return {

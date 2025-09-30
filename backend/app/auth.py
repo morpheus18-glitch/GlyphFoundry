@@ -75,8 +75,10 @@ async def get_current_user(
             raise AuthenticationError("Invalid user ID in token")
         
         # Set tenant context for RLS BEFORE querying
-        db.execute(text("SELECT set_config('app.current_tenant_id', :tenant_id, true)"), 
+        db.execute(text("SELECT set_config('app.tenant_id', :tenant_id, true)"), 
                   {"tenant_id": tenant_id})
+        db.execute(text("SELECT set_config('app.user_id', :user_id, true)"), 
+                  {"user_id": user_id})
         
         # Get user from database with tenant info
         user_sql = text("""
