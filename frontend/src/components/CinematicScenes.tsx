@@ -6,6 +6,7 @@ const SCENE_NAMES = [
   "QuantumWavefield",
   "VolumetricSpines",
   "ParticleVortex",
+  "EarthCinematic",
 ] as const;
 
 type SceneName = (typeof SCENE_NAMES)[number];

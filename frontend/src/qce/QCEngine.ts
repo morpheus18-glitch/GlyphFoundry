@@ -4,6 +4,7 @@ import { TFParticleSim } from "./engine/particles/TFParticleSim";
 import { SceneManager } from "./scenes/SceneManager";
 import { NeuralConstellation } from "./scenes/NeuralConstellation";
 import { ParticleVortex } from "./scenes/ParticleVortex";
+import { EarthCinematic } from "./scenes/EarthCinematic";
 import { QuantumWavefield } from "./scenes/QuantumWavefield";
 import { VolumetricSpines } from "./scenes/VolumetricSpines";
 
@@ -44,6 +45,7 @@ export class QCEngine {
     this.scenes.register(new QuantumWavefield());
     this.scenes.register(new VolumetricSpines());
     this.scenes.register(new ParticleVortex(this.tfSim));
+    this.scenes.register(new EarthCinematic());
 
     this.resize();
     window.addEventListener("resize", this.handleResize);

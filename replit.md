@@ -37,6 +37,7 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 - **React + TypeScript**: Component-based UI with Vite build system and Tailwind CSS
 - **WebGL Engine**: Custom QCEngine with HDR pipelines, particle systems, and cinematic cameras
+- **Cinematic HDR Engine**: Real-time WebGL2 rendering with ACES Filmic tone mapping, procedural earth geometry, and GPU compute-style particle physics
 - **3D Visualization**: Three.js with React Three Fiber for knowledge graph rendering
 - **Post-Processing**: Bloom effects, depth of field, and temporal anti-aliasing
 - **Web Workers**: Dedicated threads for force-directed layout calculations to maintain UI responsiveness
@@ -118,6 +119,15 @@ Preferred communication style: Simple, everyday language.
 - **Tools**: 3 MCP tools (ingest_conversation, create_conversation_glyphs, analyze_conversation)
 - **Features**: Automatic glyph generation, conversation analysis, multi-tenant support
 - **Integration**: Direct API connection with tenant isolation via headers
+
+### Cinematic HDR Rendering Engine (September 2025)
+- **Earth Cinematic Scene**: WebGL2 native rendering with procedural planet geometry
+- **HDR Pipeline**: RGB16F framebuffer with ACES Filmic tone mapping for cinematic visuals
+- **Procedural Earth**: Fresnel atmospheric glow, ocean/land pattern generation, dynamic rotation
+- **Compute Particles**: 5000 particles with real-time gravitational field simulation
+- **Geometry Functions**: Sphere generation with customizable segments, matrix math operations
+- **Scene Portfolio**: 5 cinematic scenes (Neural Constellation, Quantum Wavefield, Volumetric Spines, Particle Vortex, Earth Cinematic)
+- **Real-time Display**: Always-on rendering loop with 60fps target and delta-time physics
 
 ### Data Flow Pipeline
 ```

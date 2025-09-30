@@ -11,7 +11,12 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5000,
-    allowedHosts: ['*']
+    allowedHosts: ['*'],
+    proxy: {
+      '/graph3d': 'http://localhost:8000',
+      '/tags': 'http://localhost:8000',
+      '/api': 'http://localhost:8000'
+    }
   },
   build: { outDir: 'dist' }
 })
