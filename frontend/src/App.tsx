@@ -3,8 +3,8 @@ import { Dashboard } from "./pages/Dashboard";
 import { NodesPage } from "./pages/NodesPage";
 import { EmbeddingsPage } from "./pages/EmbeddingsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import NeuralKnowledgeNetwork from "./components/NeuralKnowledgeNetwork";
 
-const NeuralKnowledgeNetwork = lazy(() => import("./components/NeuralKnowledgeNetwork"));
 const CinematicScenes = lazy(() => import("./components/CinematicScenes"));
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
@@ -118,13 +118,13 @@ export default function App() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-blue-50 text-gray-900">
-      <header className="flex flex-wrap items-center gap-4 border-b border-gray-200 bg-white/80 backdrop-blur-md px-6 py-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+    <div className="flex min-h-screen flex-col bg-black text-gray-100">
+      <header className="absolute top-0 left-0 right-0 z-50 flex flex-wrap items-center gap-4 bg-black/50 backdrop-blur-md px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-purple-500/50">
             KG
           </div>
-          <strong className="text-lg font-semibold text-gray-800">Knowledge Graph</strong>
+          <strong className="text-xl font-bold text-white tracking-wide">Knowledge Network</strong>
         </div>
         <nav className="flex flex-wrap gap-2">
           {navItems.map(([mode, label]) => (
@@ -134,8 +134,8 @@ export default function App() {
               onClick={() => setView(mode)}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 view === mode 
-                  ? "bg-blue-600 text-white shadow-md" 
-                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-blue-500/50" 
+                  : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/20"
               }`}
             >
               {label}
@@ -233,9 +233,13 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 to-blue-50">
-        <section className="mx-auto w-full max-w-7xl px-6 py-8">
-          {view === "overview" && <Dashboard />}
+      <main className="flex-1 overflow-hidden bg-black">
+        <section className="h-full w-full">
+          {view === "overview" && (
+            <div className="mx-auto w-full max-w-7xl px-6 py-8">
+              <Dashboard />
+            </div>
+          )}
           {view === "nodes" && <NodesPage />}
           {view === "embeddings" && <EmbeddingsPage />}
           {view === "settings" && <SettingsPage />}
@@ -252,36 +256,29 @@ export default function App() {
             </Suspense>
           )}
           {view === "graph" && (
-            <div className="grid h-[75vh] w-full grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-              <section className="relative flex items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden">
-                <Suspense fallback={
-                  <div className="flex flex-col items-center justify-center gap-3 p-8">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-                    <p className="text-sm text-gray-600">Loading 3D visualization...</p>
-                  </div>
-                }>
-                  <NeuralKnowledgeNetwork nodes={graph?.nodes} edges={graph?.edges} />
-                </Suspense>
+            <div className="absolute inset-0 top-20">
+              <section className="relative h-full w-full bg-black">
+                <NeuralKnowledgeNetwork nodes={graph?.nodes} edges={graph?.edges} />
               </section>
-              <aside className="hidden overflow-auto rounded-2xl border border-gray-200 bg-white shadow-md p-6 lg:block">
-                <h2 className="mb-4 text-base font-semibold text-gray-800">Knowledge Tags</h2>
+              <aside className="absolute top-6 right-6 w-80 max-h-[80vh] overflow-auto rounded-xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-2xl p-6">
+                <h2 className="mb-4 text-lg font-bold text-cyan-400">Knowledge Tags</h2>
                 {tags.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <div className="mb-2 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                      <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="mb-3 h-12 w-12 rounded-full bg-white/5 flex items-center justify-center">
+                      <svg className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                       </svg>
                     </div>
-                    <p className="text-sm text-gray-500">No tags available yet</p>
+                    <p className="text-sm text-gray-400">No tags discovered yet</p>
                   </div>
                 ) : (
                   <ul className="space-y-3">
                     {tags.map((tag) => (
-                      <li key={`${tag.tag_id}:${tag.node_id}`} className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 hover:bg-gray-50 transition-colors">
-                        <div className="text-xs font-medium text-blue-600 mb-1">{tag.slug}</div>
-                        <div className="text-sm font-medium text-gray-900 mb-1">{tag.name}</div>
-                        <div className="text-xs text-gray-500">
-                          Node: {tag.node_id.slice(0, 8)}... • {Math.round(tag.confidence * 100)}% confidence
+                      <li key={`${tag.tag_id}:${tag.node_id}`} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 hover:bg-cyan-500/10 transition-colors">
+                        <div className="text-xs font-medium text-cyan-400 mb-1">{tag.slug}</div>
+                        <div className="text-sm font-medium text-white mb-1">{tag.name}</div>
+                        <div className="text-xs text-gray-400">
+                          Node: {tag.node_id.slice(0, 8)}... • {Math.round(tag.confidence * 100)}%
                         </div>
                       </li>
                     ))}
@@ -291,11 +288,11 @@ export default function App() {
             </div>
           )}
           {view === "cinematic" && (
-            <div className="h-[75vh] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-900 to-black shadow-2xl">
+            <div className="absolute inset-0 top-20 bg-black">
               <Suspense fallback={
-                <div className="flex h-full flex-col items-center justify-center gap-3 p-8">
-                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500 border-t-transparent"></div>
-                  <p className="text-sm text-gray-400">Loading cinematic renderer...</p>
+                <div className="flex h-full flex-col items-center justify-center gap-4">
+                  <div className="h-16 w-16 animate-spin rounded-full border-4 border-purple-500 border-t-transparent shadow-lg shadow-purple-500/50"></div>
+                  <p className="text-lg text-purple-400 font-medium">Loading Cinematic Experience...</p>
                 </div>
               }>
                 <CinematicScenes />
