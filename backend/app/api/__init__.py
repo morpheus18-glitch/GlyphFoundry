@@ -1,10 +1,7 @@
 """API router exports."""
-from . import embeddings, health, nodes, overview, settings
+from . import health, overview
 
 __all__ = [
-    "embeddings",
     "health",
-    "nodes",
     "overview",
-    "settings",
 ]
