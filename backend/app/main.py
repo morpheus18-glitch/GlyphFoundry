@@ -110,6 +110,14 @@ try:
 except ImportError as e:
     logging.warning(f"Admin API not available: {e}")
 
+# Graph 3D and tags visualization API
+try:
+    from .api.graph3d import router as graph3d_router
+    app.include_router(graph3d_router)
+    logging.info("Graph 3D visualization API loaded")
+except ImportError as e:
+    logging.warning(f"Graph 3D API not available: {e}")
+
 # File upload and multi-modal ingestion API
 try:
     from .api.files import router as files_router

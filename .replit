@@ -70,6 +70,10 @@ externalPort = 80
 localPort = 8000
 externalPort = 8000
 
+[[ports]]
+localPort = 37911
+externalPort = 3000
+
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd backend && gunicorn --bind=0.0.0.0:5000 --workers=4 --worker-class=uvicorn.workers.UvicornWorker --timeout=120 --keep-alive=2 app.main:app"]
