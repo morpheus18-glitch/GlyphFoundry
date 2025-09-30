@@ -22,5 +22,5 @@ COPY migrations/ /app/migrations/
 COPY gunicorn.conf.py /app/gunicorn.conf.py
 
 EXPOSE 8000
-# flat module path
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Use Gunicorn for production with Uvicorn workers
+CMD ["gunicorn", "main:app", "-c", "gunicorn.conf.py"]

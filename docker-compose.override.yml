@@ -1,0 +1,82 @@
+# Override file for production deployment on droplet
+# This extends docker-compose.yml with production-specific settings
+
+services:
+  backend:
+    environment:
+      # Production environment
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      # CORS for production domain
+      CORS_ALLOW_ORIGINS: "https://fitwellfast.com,https://www.fitwellfast.com"
+      # Performance tuning
+      GUNICORN_WORKERS: "4"
+      GUNICORN_THREADS: "4"
+      GUNICORN_TIMEOUT: "90"
+      GUNICORN_KEEPALIVE: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    restart: always
+
+  gf_frontend:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    restart: always
+
+  edge:
+    environment:
+      # Nginx tuning for production
+      NGINX_WORKER_PROCESSES: "auto"
+      NGINX_WORKER_CONNECTIONS: "4096"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    restart: always
+    # Mount SSL certs from host
+    volumes:
+      - ./edge/conf.d:/etc/nginx/conf.d:ro
+      - ./edge/certbot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./edge/nginx.conf:/etc/nginx/nginx.conf:ro
+
+  gf_postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    restart: always
+    # Postgres performance tuning
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=128MB
+      -c max_connections=200
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=5MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+
+  minio:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    restart: always
