@@ -46,6 +46,12 @@ ALTER TABLE graph_coords_v2 FORCE ROW LEVEL SECURITY;
 ALTER TABLE embeddings_v2 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE embeddings_v2 FORCE ROW LEVEL SECURITY;
 
+ALTER TABLE files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE files FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE file_chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE file_chunks FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
 
@@ -65,6 +71,8 @@ DROP POLICY IF EXISTS tenant_isolation ON node_tags_v2;
 DROP POLICY IF EXISTS tenant_isolation ON glyphs_4d;
 DROP POLICY IF EXISTS tenant_isolation ON graph_coords_v2;
 DROP POLICY IF EXISTS tenant_isolation ON embeddings_v2;
+DROP POLICY IF EXISTS tenant_isolation ON files;
+DROP POLICY IF EXISTS tenant_isolation ON file_chunks;
 DROP POLICY IF EXISTS tenant_isolation ON audit_log;
 DROP POLICY IF EXISTS admin_full_access ON audit_log;
 
@@ -125,6 +133,18 @@ CREATE POLICY tenant_isolation ON graph_coords_v2
     WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
 
 CREATE POLICY tenant_isolation ON embeddings_v2
+    FOR ALL
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+-- Files table (multi-modal ingestion)
+CREATE POLICY tenant_isolation ON files
+    FOR ALL
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+-- File chunks table
+CREATE POLICY tenant_isolation ON file_chunks
     FOR ALL
     USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
     WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);

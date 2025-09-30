@@ -20,3 +20,6 @@ pyjwt
 cryptography
 PyJWT
 gunicorn
+minio
+PyPDF2
+python-multipart
