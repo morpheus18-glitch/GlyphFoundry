@@ -23,7 +23,7 @@ def export_graph_json(db: Session, limit_nodes: int, limit_edges: int, window_mi
         LIMIT :ln
       ),
       picked_edges AS (
-        SELECT e.src_id, e.dst_id, e.rel, COALESCE(e.weight,0.0) AS weight, e.created_at
+        SELECT e.src_id, e.dst_id, e.relation_name AS rel, COALESCE(e.weight,0.0) AS weight, e.created_at
         FROM edges e
         JOIN picked_nodes a ON a.id = e.src_id
         JOIN picked_nodes b ON b.id = e.dst_id
