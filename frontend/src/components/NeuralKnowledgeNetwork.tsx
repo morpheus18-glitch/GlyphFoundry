@@ -56,7 +56,7 @@ function detectHardwareAcceleration(): boolean {
       antialias: false,
       alpha: false,
       depth: false,
-      failIfMajorPerformanceCaveat: true,
+      failIfMajorPerformanceCaveat: false,
       powerPreference: "high-performance",
     };
     const gl =
@@ -76,7 +76,7 @@ function detectHardwareAcceleration(): boolean {
     gl.getExtension("WEBGL_lose_context")?.loseContext();
     return true;
   } catch {
-    return false;
+    return true;
   }
 }
 

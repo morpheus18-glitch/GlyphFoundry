@@ -42,7 +42,7 @@ export default function App() {
   const [tags, setTags] = useState<TagRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<ViewMode>("cinematic");
+  const [view, setView] = useState<ViewMode>("graph");
   const [windowMinutes, setWindowMinutes] = useState<number>(4320);
   const [limitNodes, setLimitNodes] = useState<number>(300);
   const [limitEdges, setLimitEdges] = useState<number>(1500);
