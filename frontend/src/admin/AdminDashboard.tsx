@@ -29,7 +29,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 5000);
+    const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -48,153 +48,170 @@ export function AdminDashboard() {
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch admin stats:', error);
+      setLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="text-cyan-400 text-xl">Loading admin dashboard...</div>
+      <div className="flex h-96 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <p className="text-sm text-gray-600">Loading admin data...</p>
+        </div>
       </div>
     );
   }
 
+  const formatUptime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 text-cyan-400">
-          🔮 Glyph Foundry Admin Dashboard
-        </h1>
+    <div className="space-y-8">
+      <header>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">System Administration</h1>
+        <p className="text-base text-gray-600">
+          Monitor system metrics and data collection status.
+        </p>
+      </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Metrics"
-            value={collectorStats?.total_metrics_collected.toLocaleString() || '0'}
-            icon="📊"
-            color="cyan"
-          />
-          <StatCard
-            title="Glyphs Generated"
-            value={glyphStats?.total_glyphs.toLocaleString() || '0'}
-            icon="✨"
-            color="purple"
-          />
-          <StatCard
-            title="Collection Rate"
-            value={`${collectorStats?.collection_rate_per_second.toFixed(1) || '0'}/s`}
-            icon="⚡"
-            color="yellow"
-          />
-          <StatCard
-            title="Active Collectors"
-            value={collectorStats?.active_collectors.toString() || '0'}
-            icon="🤖"
-            color="green"
-          />
-        </div>
+      {/* Metrics Collection Stats */}
+      {collectorStats && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Metrics Collection</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Total Metrics"
+              value={collectorStats.total_metrics_collected.toLocaleString()}
+              color="blue"
+            />
+            <StatCard
+              label="Data Points"
+              value={collectorStats.glyphs_generated.toLocaleString()}
+              color="green"
+            />
+            <StatCard
+              label="Collection Rate"
+              value={`${collectorStats.collection_rate_per_second.toFixed(1)}/s`}
+              color="purple"
+            />
+            <StatCard
+              label="Active Collectors"
+              value={collectorStats.active_collectors.toString()}
+              color="orange"
+            />
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-gray-800 rounded-lg p-6 border border-cyan-500/30">
-            <h2 className="text-2xl font-bold mb-4 text-cyan-400">Metrics Collection</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Uptime:</span>
-                <span className="text-white font-mono">
-                  {formatUptime(collectorStats?.uptime_seconds || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Protocols:</span>
-                <div className="flex gap-2">
-                  {collectorStats?.protocols_enabled.map(protocol => (
+          <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">System Uptime:</span>
+              <span className="text-sm text-gray-900">{formatUptime(collectorStats.uptime_seconds)}</span>
+            </div>
+            {collectorStats.protocols_enabled.length > 0 && (
+              <div className="mt-3 flex items-start gap-2">
+                <span className="text-sm font-medium text-gray-700">Active Protocols:</span>
+                <div className="flex flex-wrap gap-2">
+                  {collectorStats.protocols_enabled.map((protocol) => (
                     <span
                       key={protocol}
-                      className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-sm"
+                      className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800"
                     >
                       {protocol}
                     </span>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Data Distribution Stats */}
+      {glyphStats && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Distribution</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-sm font-medium text-gray-600 mb-3">Data Points by Type</h3>
+              {Object.keys(glyphStats.glyphs_by_type).length === 0 ? (
+                <p className="text-sm text-gray-500">No data points yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(glyphStats.glyphs_by_type).map(([type, count]) => (
+                    <div key={type} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">{type}</span>
+                      <span className="text-sm font-medium text-gray-900">{count.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-sm font-medium text-gray-600 mb-3">Spatial Analysis</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Total Clusters</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {glyphStats.spatial_distribution.clusters}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Avg. Cluster Size</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {glyphStats.spatial_distribution.avg_cluster_size.toFixed(1)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-6 border border-purple-500/30">
-            <h2 className="text-2xl font-bold mb-4 text-purple-400">4D Glyph Statistics</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Spatial Clusters:</span>
-                <span className="text-white font-mono">
-                  {glyphStats?.spatial_distribution.clusters}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Avg Cluster Size:</span>
-                <span className="text-white font-mono">
-                  {glyphStats?.spatial_distribution.avg_cluster_size}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Time Range:</span>
-                <span className="text-white text-sm font-mono">
-                  {formatTime(glyphStats?.time_range.earliest || '')} - {formatTime(glyphStats?.time_range.latest || '')}
+          {glyphStats.time_range.earliest && (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Data Collection Period:</span>
+                  <div className="mt-1 text-xs text-gray-600">
+                    {new Date(glyphStats.time_range.earliest).toLocaleString()} 
+                    {' → '}
+                    {new Date(glyphStats.time_range.latest).toLocaleString()}
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-gray-900">
+                  {glyphStats.total_glyphs.toLocaleString()}
                 </span>
               </div>
             </div>
-          </div>
+          )}
         </div>
-
-        <div className="mt-8 bg-gray-800 rounded-lg p-6 border border-yellow-500/30">
-          <h2 className="text-2xl font-bold mb-4 text-yellow-400">Glyphs by Type</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(glyphStats?.glyphs_by_type || {}).map(([type, count]) => (
-              <div key={type} className="bg-gray-700/50 rounded p-4">
-                <div className="text-gray-400 text-sm mb-1">{formatTypeName(type)}</div>
-                <div className="text-2xl font-bold text-white">{count.toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
 interface StatCardProps {
-  title: string;
+  label: string;
   value: string;
-  icon: string;
-  color: 'cyan' | 'purple' | 'yellow' | 'green';
+  color: 'blue' | 'green' | 'purple' | 'orange';
 }
 
-function StatCard({ title, value, icon, color }: StatCardProps) {
-  const colorClasses = {
-    cyan: 'border-cyan-500/30 text-cyan-400',
-    purple: 'border-purple-500/30 text-purple-400',
-    yellow: 'border-yellow-500/30 text-yellow-400',
-    green: 'border-green-500/30 text-green-400',
+function StatCard({ label, value, color }: StatCardProps) {
+  const colorMap = {
+    blue: 'from-blue-500 to-blue-600',
+    green: 'from-green-500 to-green-600',
+    purple: 'from-purple-500 to-purple-600',
+    orange: 'from-orange-500 to-orange-600',
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 border ${colorClasses[color]}`}>
-      <div className="text-3xl mb-2">{icon}</div>
-      <div className="text-gray-400 text-sm mb-1">{title}</div>
-      <div className="text-3xl font-bold">{value}</div>
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+      <dt className="text-sm font-medium text-gray-600 mb-2">{label}</dt>
+      <dd className={`text-3xl font-bold bg-gradient-to-r ${colorMap[color]} bg-clip-text text-transparent`}>
+        {value}
+      </dd>
     </div>
   );
-}
-
-function formatUptime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${hours}h ${minutes}m`;
-}
-
-function formatTime(timestamp: string): string {
-  if (!timestamp) return '';
-  return new Date(timestamp).toLocaleTimeString();
-}
-
-function formatTypeName(type: string): string {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }

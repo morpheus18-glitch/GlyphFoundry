@@ -6,6 +6,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 
 const NeuralKnowledgeNetwork = lazy(() => import("./components/NeuralKnowledgeNetwork"));
 const CinematicScenes = lazy(() => import("./components/CinematicScenes"));
+const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
 type ApiNode = {
   id: string;
@@ -26,7 +27,7 @@ type GraphPayload = {
 
 type TagRow = { tag_id: string; slug: string; name: string; node_id: string; confidence: number };
 
-type ViewMode = "overview" | "graph" | "cinematic" | "nodes" | "embeddings" | "settings";
+type ViewMode = "overview" | "graph" | "cinematic" | "nodes" | "embeddings" | "settings" | "admin";
 
 const GRAPH_BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TAGS_BASE = import.meta.env.VITE_TAGS_BASE || "/tags";
@@ -116,6 +117,7 @@ export default function App() {
     ["nodes", "Nodes"],
     ["embeddings", "Embeddings"],
     ["settings", "Settings"],
+    ["admin", "Admin"],
   ];
 
   return (
@@ -240,6 +242,18 @@ export default function App() {
           {view === "nodes" && <NodesPage />}
           {view === "embeddings" && <EmbeddingsPage />}
           {view === "settings" && <SettingsPage />}
+          {view === "admin" && (
+            <Suspense fallback={
+              <div className="flex h-96 items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                  <p className="text-sm text-gray-600">Loading admin panel...</p>
+                </div>
+              </div>
+            }>
+              <AdminDashboard />
+            </Suspense>
+          )}
           {view === "graph" && (
             <div className="grid h-[75vh] w-full grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
               <section className="relative flex items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden">

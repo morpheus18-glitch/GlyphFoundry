@@ -11,18 +11,15 @@ interface OverviewResponse {
   edges: {
     total: number;
   };
+  tags?: {
+    total: number;
+  };
   status: string;
   version: string;
 }
 
-interface TelemetrySnapshot {
-  generated_at: string;
-  metrics: Record<string, { type: string; documentation: string; samples: any[] }>;
-}
-
 export function Dashboard() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
-  const [telemetry, setTelemetry] = useState<TelemetrySnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,12 +28,8 @@ export function Dashboard() {
       try {
         setLoading(true);
         setError(null);
-        const [overviewData, telemetrySnapshot] = await Promise.all([
-          request<OverviewResponse>("/api/v1/overview"),
-          request<TelemetrySnapshot>("/api/v1/telemetry"),
-        ]);
+        const overviewData = await request<OverviewResponse>("/api/v1/overview");
         setOverview(overviewData);
-        setTelemetry(telemetrySnapshot);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -51,32 +44,31 @@ export function Dashboard() {
       <div className="flex h-96 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-          <p className="text-sm text-gray-600">Loading dashboard...</p>
+          <p className="text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+          <h2 className="text-lg font-semibold text-red-900 mb-2">Error Loading Dashboard</h2>
+          <p className="text-sm text-red-700">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <section className="space-y-8">
+    <div className="space-y-8">
       <header>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">System Overview</h1>
         <p className="text-base text-gray-600">
-          Monitor your knowledge graph and system performance at a glance.
+          Monitor your knowledge graph health and system status.
         </p>
       </header>
-
-      {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 p-4 flex items-start gap-3">
-          <svg className="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <h3 className="font-medium text-red-900">Unable to load data</h3>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
-          </div>
-        </div>
-      )}
 
       {overview && (
         <div>
@@ -125,88 +117,61 @@ export function Dashboard() {
         </div>
       )}
 
-      {telemetry && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">System Metrics</h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <p className="text-sm text-gray-600">
-                <span className="font-medium text-gray-900">Last updated:</span>{" "}
-                {new Date(telemetry.generated_at).toLocaleString()}
-              </p>
+      {overview && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 mb-1">Total Connections</span>
+              <span className="text-2xl font-bold text-gray-900">{overview.edges.total}</span>
             </div>
-            <div className="p-4">
-              {Object.keys(telemetry.metrics).length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="mb-3 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium text-gray-900">No metrics available</p>
-                  <p className="text-xs text-gray-500 mt-1">System metrics will appear here once collected</p>
-                </div>
-              ) : (
-                <pre className="overflow-auto text-xs font-mono text-gray-700 bg-gray-50 rounded-lg p-4">
-                  {JSON.stringify(telemetry.metrics, null, 2)}
-                </pre>
-              )}
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 mb-1">System Status</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                <span className="text-sm font-medium text-gray-900 capitalize">{overview.status}</span>
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 mb-1">Version</span>
+              <span className="text-sm font-mono text-gray-900">{overview.version}</span>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
 interface StatCardProps {
   label: string;
   value: number;
-  tone?: "default" | "success" | "warning" | "danger";
-  icon?: React.ReactNode;
+  tone?: "success" | "warning" | "danger";
+  icon: React.ReactNode;
 }
 
-function StatCard({ label, value, tone = "default", icon }: StatCardProps) {
-  const palette: Record<typeof tone, { bg: string; text: string; border: string; icon: string }> = {
-    default: { 
-      bg: "bg-white", 
-      text: "text-gray-900", 
-      border: "border-gray-200",
-      icon: "text-gray-600"
-    },
-    success: { 
-      bg: "bg-green-50", 
-      text: "text-green-900", 
-      border: "border-green-200",
-      icon: "text-green-600"
-    },
-    warning: { 
-      bg: "bg-amber-50", 
-      text: "text-amber-900", 
-      border: "border-amber-200",
-      icon: "text-amber-600"
-    },
-    danger: { 
-      bg: "bg-red-50", 
-      text: "text-red-900", 
-      border: "border-red-200",
-      icon: "text-red-600"
-    },
-  } as const;
-  
-  const colors = palette[tone];
-  
+function StatCard({ label, value, tone, icon }: StatCardProps) {
+  const toneColors = {
+    success: "text-green-600 bg-green-50 border-green-200",
+    warning: "text-amber-600 bg-amber-50 border-amber-200",
+    danger: "text-red-600 bg-red-50 border-red-200",
+  };
+
+  const iconColors = {
+    success: "text-green-600",
+    warning: "text-amber-600",
+    danger: "text-red-600",
+  };
+
   return (
-    <div className={`rounded-xl border ${colors.border} ${colors.bg} p-6 shadow-sm hover:shadow-md transition-shadow`}>
-      <div className="flex items-start justify-between mb-3">
+    <div className={`rounded-xl border bg-white p-6 shadow-sm hover:shadow-md transition-shadow ${tone ? toneColors[tone] : "border-gray-200"}`}>
+      <div className="flex items-center justify-between mb-3">
         <dt className="text-sm font-medium text-gray-600">{label}</dt>
-        {icon && (
-          <div className={colors.icon}>
-            {icon}
-          </div>
-        )}
+        <div className={tone ? iconColors[tone] : "text-gray-400"}>
+          {icon}
+        </div>
       </div>
-      <dd className={`text-3xl font-bold ${colors.text}`}>{value.toLocaleString()}</dd>
+      <dd className="text-3xl font-bold text-gray-900">{value}</dd>
     </div>
   );
 }
