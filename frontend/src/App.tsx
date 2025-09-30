@@ -114,9 +114,6 @@ export default function App() {
     ["overview", "Overview"],
     ["graph", "Graph"],
     ["cinematic", "Cinematic"],
-    ["nodes", "Nodes"],
-    ["embeddings", "Embeddings"],
-    ["settings", "Settings"],
     ["admin", "Admin"],
   ];
 
