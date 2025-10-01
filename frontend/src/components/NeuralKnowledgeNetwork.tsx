@@ -247,7 +247,7 @@ function InstancedNodes({
         clearcoatRoughness={0.1}
         envMapIntensity={1.5}
         emissive={COLOR_NODE}
-        emissiveIntensity={0.8}
+        emissiveIntensity={2.5}
         vertexColors
       />
       <instancedBufferAttribute attach="instanceColor" args={[colorArray, 3]} />
@@ -842,6 +842,7 @@ export default function NeuralKnowledgeNetwork({
             onCreated={({ gl, scene }) => {
               gl.shadowMap.enabled = true;
               gl.shadowMap.type = THREE.PCFSoftShadowMap;
+              scene.background = new THREE.Color('#000000');
               scene.fog = new THREE.FogExp2(new THREE.Color('#000000'), 0.001);
             }}
           >
