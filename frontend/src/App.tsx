@@ -112,6 +112,8 @@ export default function App() {
 
   const handleNodeSelect = useCallback((nodeId: string) => {
     setSelectedNodeId(nodeId);
+    setWindowMinutes(525600); // Expand to 1 year to ensure node is visible
+    setRefreshToken(prev => prev + 1); // Trigger data refresh
     setView("network");
   }, []);
 

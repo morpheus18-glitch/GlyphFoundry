@@ -51,7 +51,7 @@ export function DataManagement({ onNodeSelect }: DataManagementProps) {
 
   const loadNodes = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/tenants/${DEFAULT_TENANT}/graph?limit_nodes=100&limit_edges=0&window_minutes=525600`);
+      const response = await fetch(`${API_BASE}/tenants/${DEFAULT_TENANT}/graph?limit_nodes=100&limit_edges=200&window_minutes=525600`);
       if (response.ok) {
         const data = await response.json();
         setNodes(data.nodes || []);
