@@ -126,6 +126,14 @@ try:
 except ImportError as e:
     logging.warning(f"File upload API not available: {e}")
 
+# User settings and profile API
+try:
+    from .api.user_settings import router as user_settings_router
+    app.include_router(user_settings_router)
+    logging.info("User settings API loaded")
+except ImportError as e:
+    logging.warning(f"User settings API not available: {e}")
+
 # User accounts and personalization API
 try:
     from .api.accounts import router as accounts_router

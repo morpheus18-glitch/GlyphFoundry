@@ -89,12 +89,12 @@ async def create_node(
     
     # Create node with all required fields populated
     sql = text("""
-        INSERT INTO nodes (
+        INSERT INTO nodes_v2 (
             tenant_id, kind, name, summary, content, metadata,
             embedding_384, pos_x, pos_y, pos_z, color, size, 
             opacity, glow_intensity, importance_score, connection_strength
         ) VALUES (
-            :tenant_id, :kind, :name, :summary, :content, :metadata,
+            :tenant_id, :kind::node_kind_enum, :name, :summary, :content, :metadata::jsonb,
             :embedding_384::vector, :pos_x, :pos_y, :pos_z, :color, :size,
             :opacity, :glow_intensity, :importance_score, :connection_strength
         ) RETURNING *
@@ -162,7 +162,7 @@ async def get_knowledge_graph(
     sql = text("""
         WITH recent_edges AS (
             SELECT *
-            FROM edges
+            FROM edges_v2
             WHERE tenant_id = :tenant_id
               AND created_at >= (NOW() - (:window_minutes || ' minutes')::interval)
             ORDER BY weight DESC, confidence DESC
@@ -177,19 +177,19 @@ async def get_knowledge_graph(
             SELECT 
                 n.*,
                 -- Generate spiral galaxy positioning for nodes without positions
-                CASE WHEN n.pos_x = 0 AND n.pos_y = 0 AND n.pos_z = 0 THEN
-                    (RANDOM() - 0.5) * 200 * (1 + n.importance_score)
+                CASE WHEN COALESCE(n.pos_x, 0) = 0 AND COALESCE(n.pos_y, 0) = 0 AND COALESCE(n.pos_z, 0) = 0 THEN
+                    (RANDOM() - 0.5) * 200 * (1 + COALESCE(n.importance_score, 0.5))
                 ELSE n.pos_x END as calc_x,
-                CASE WHEN n.pos_x = 0 AND n.pos_y = 0 AND n.pos_z = 0 THEN
-                    (RANDOM() - 0.5) * 200 * (1 + n.importance_score)
+                CASE WHEN COALESCE(n.pos_x, 0) = 0 AND COALESCE(n.pos_y, 0) = 0 AND COALESCE(n.pos_z, 0) = 0 THEN
+                    (RANDOM() - 0.5) * 200 * (1 + COALESCE(n.importance_score, 0.5))
                 ELSE n.pos_y END as calc_y,
-                CASE WHEN n.pos_x = 0 AND n.pos_y = 0 AND n.pos_z = 0 THEN
-                    (RANDOM() - 0.5) * 50 + SIN(n.importance_score * 10) * 20
+                CASE WHEN COALESCE(n.pos_x, 0) = 0 AND COALESCE(n.pos_y, 0) = 0 AND COALESCE(n.pos_z, 0) = 0 THEN
+                    (RANDOM() - 0.5) * 50 + SIN(COALESCE(n.importance_score, 0.5) * 10) * 20
                 ELSE n.pos_z END as calc_z
-            FROM nodes n
+            FROM nodes_v2 n
             JOIN node_ids s ON s.id = n.id
             WHERE n.tenant_id = :tenant_id
-            ORDER BY n.importance_score DESC, n.created_at DESC
+            ORDER BY COALESCE(n.importance_score, 0) DESC, n.created_at DESC
             LIMIT :limit_nodes
         )
         SELECT 
@@ -198,18 +198,18 @@ async def get_knowledge_graph(
                 json_build_object(
                     'id', pn.id::text,
                     'tenant_id', pn.tenant_id::text,
-                    'kind', pn.kind,
+                    'kind', pn.kind::text,
                     'name', COALESCE(pn.name, ''),
                     'summary', COALESCE(pn.summary, ''),
-                    'pos_x', pn.calc_x,
-                    'pos_y', pn.calc_y,
-                    'pos_z', pn.calc_z,
-                    'color', pn.color,
-                    'size', pn.size * (1 + pn.importance_score * 0.5),
-                    'opacity', pn.opacity,
-                    'glow_intensity', pn.glow_intensity + pn.importance_score * 0.3,
-                    'importance_score', pn.importance_score,
-                    'connection_strength', pn.connection_strength,
+                    'pos_x', COALESCE(pn.calc_x, 0),
+                    'pos_y', COALESCE(pn.calc_y, 0),
+                    'pos_z', COALESCE(pn.calc_z, 0),
+                    'color', COALESCE(pn.color, '#4A90E2'),
+                    'size', COALESCE(pn.size, 1.0) * (1 + COALESCE(pn.importance_score, 0) * 0.5),
+                    'opacity', COALESCE(pn.opacity, 1.0),
+                    'glow_intensity', COALESCE(pn.glow_intensity, 0.5) + COALESCE(pn.importance_score, 0) * 0.3,
+                    'importance_score', COALESCE(pn.importance_score, 0),
+                    'connection_strength', COALESCE(pn.connection_strength, 0),
                     'created_at', pn.created_at
                 )
             ) as data
@@ -224,14 +224,14 @@ async def get_knowledge_graph(
                     'id', e.id::text,
                     'src_id', e.src_id::text,
                     'dst_id', e.dst_id::text,
-                    'edge_type', e.edge_type,
+                    'edge_type', e.edge_type::text,
                     'relation_name', COALESCE(e.relation_name, ''),
-                    'weight', e.weight,
-                    'confidence', e.confidence,
-                    'color', CASE WHEN e.auto_generated THEN '#00ff88' ELSE e.color END,
-                    'thickness', e.thickness * (0.5 + e.confidence * 0.5),
-                    'opacity', e.opacity * e.confidence,
-                    'auto_generated', e.auto_generated,
+                    'weight', COALESCE(e.weight, 1.0),
+                    'confidence', COALESCE(e.confidence, 1.0),
+                    'color', CASE WHEN COALESCE(e.auto_generated, false) THEN '#00ff88' ELSE COALESCE(e.color, '#888888') END,
+                    'thickness', COALESCE(e.thickness, 1.0) * (0.5 + COALESCE(e.confidence, 1.0) * 0.5),
+                    'opacity', COALESCE(e.opacity, 0.8) * COALESCE(e.confidence, 1.0),
+                    'auto_generated', COALESCE(e.auto_generated, false),
                     'created_at', e.created_at
                 )
             ) as data
