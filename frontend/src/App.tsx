@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
+import { DataManagement } from "./pages/DataManagement";
 import NeuralKnowledgeNetwork from "./components/NeuralKnowledgeNetwork";
 
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
@@ -23,7 +24,7 @@ type GraphPayload = {
 
 type TagRow = { tag_id: string; slug: string; name: string; node_id: string; confidence: number };
 
-type ViewMode = "network" | "overview" | "admin";
+type ViewMode = "network" | "data" | "overview" | "admin";
 
 const GRAPH_BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TAGS_BASE = import.meta.env.VITE_TAGS_BASE || "/tags";
@@ -44,6 +45,7 @@ export default function App() {
   const [limitEdges, setLimitEdges] = useState<number>(1500);
   const [refreshToken, setRefreshToken] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -106,8 +108,15 @@ export default function App() {
     return () => controller.abort();
   }, [headers, windowMinutes, limitNodes, limitEdges, refreshToken]);
 
+  const handleNodeSelect = useCallback((nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    setView("network");
+    triggerRefresh();
+  }, [triggerRefresh]);
+
   const navItems: [ViewMode, string][] = [
     ["network", "Knowledge Network"],
+    ["data", "Data"],
     ["overview", "Overview"],
     ["admin", "Admin"],
   ];
@@ -184,6 +193,11 @@ export default function App() {
 
       <main className="flex-1 overflow-hidden bg-black">
         <section className="h-full w-full">
+          {view === "data" && (
+            <div className="absolute inset-0 top-20 overflow-y-auto">
+              <DataManagement onNodeSelect={handleNodeSelect} />
+            </div>
+          )}
           {view === "overview" && (
             <div className="mx-auto w-full max-w-7xl px-6 py-8">
               <Dashboard />
@@ -204,7 +218,11 @@ export default function App() {
           {view === "network" && (
             <div className="absolute inset-0 top-20">
               <section className="relative h-full w-full bg-black">
-                <NeuralKnowledgeNetwork nodes={graph?.nodes} edges={graph?.edges} />
+                <NeuralKnowledgeNetwork 
+                  nodes={graph?.nodes} 
+                  edges={graph?.edges}
+                  selectedNodeId={selectedNodeId}
+                />
               </section>
             </div>
           )}

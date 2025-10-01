@@ -637,9 +637,11 @@ function FallbackGraphExperience({
 export default function NeuralKnowledgeNetwork({
   nodes: propNodes,
   edges: propEdges,
+  selectedNodeId,
 }: {
   nodes?: ApiNode[];
   edges?: ApiEdge[];
+  selectedNodeId?: string | null;
 }) {
   const [graph, setGraph] = useState<GraphPayload>({ nodes: [], edges: [], stats: { node_count: 0, edge_count: 0, window_minutes: 60 } });
   const [loading, setLoading] = useState(true);
@@ -775,6 +777,16 @@ export default function NeuralKnowledgeNetwork({
     pushRecent(n);
     workerRef.current?.postMessage({ type: "PIN", id: n.id });
   }, [pushRecent]);
+
+  // Handle external node selection
+  useEffect(() => {
+    if (selectedNodeId && graph.nodes.length > 0) {
+      const node = graph.nodes.find(n => n.id === selectedNodeId);
+      if (node) {
+        handleSelect(node);
+      }
+    }
+  }, [selectedNodeId, graph.nodes, handleSelect]);
 
   const clearSelection = useCallback(() => {
     if (selected && workerRef.current) {
