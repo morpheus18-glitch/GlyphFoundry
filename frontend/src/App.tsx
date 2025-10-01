@@ -122,78 +122,82 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#0a0a0f] via-[#050508] to-black text-gray-100">
-      <header className="absolute top-0 left-0 right-0 z-50 flex flex-wrap items-center gap-4 bg-gradient-to-b from-black/80 via-black/60 to-transparent backdrop-blur-xl border-b border-cyan-500/10 px-6 py-4 shadow-2xl shadow-cyan-500/5">
-        <div className="flex items-center gap-4">
-          <div className="relative h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-400 via-purple-500 to-fuchsia-600 flex items-center justify-center text-white font-black text-xl shadow-2xl shadow-cyan-500/50 animate-pulse">
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-400 via-purple-500 to-fuchsia-600 opacity-50 blur-xl animate-pulse"></div>
-            <span className="relative z-10">GF</span>
+      <header className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/80 via-black/60 to-transparent backdrop-blur-xl border-b border-cyan-500/10 shadow-2xl shadow-cyan-500/5">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 px-3 md:px-6 py-3 md:py-4">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="relative h-10 w-10 md:h-12 md:w-12 rounded-xl bg-gradient-to-br from-cyan-400 via-purple-500 to-fuchsia-600 flex items-center justify-center text-white font-black text-lg md:text-xl shadow-2xl shadow-cyan-500/50 animate-pulse">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-400 via-purple-500 to-fuchsia-600 opacity-50 blur-xl animate-pulse"></div>
+              <span className="relative z-10">GF</span>
+            </div>
+            <div className="flex flex-col">
+              <strong className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-purple-300 to-fuchsia-300 tracking-wider">
+                GLYPH FOUNDRY
+              </strong>
+              <span className="text-[9px] md:text-[10px] uppercase tracking-[0.25em] md:tracking-[0.3em] text-cyan-500/60 font-semibold">Cinematic Knowledge OS</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <strong className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-purple-300 to-fuchsia-300 tracking-wider">
-              GLYPH FOUNDRY
-            </strong>
-            <span className="text-[10px] uppercase tracking-[0.3em] text-cyan-500/60 font-semibold">Cinematic Knowledge OS</span>
-          </div>
-        </div>
-        <nav className="flex flex-wrap gap-3">
-          {navItems.map(([mode, label]) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setView(mode)}
-              className={`relative overflow-hidden rounded-xl px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-                view === mode 
-                  ? "bg-gradient-to-r from-cyan-500 via-purple-500 to-fuchsia-500 text-white shadow-2xl shadow-cyan-500/50" 
-                  : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/50 backdrop-blur-sm"
-              }`}
-            >
-              {view === mode && (
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/30 via-purple-400/30 to-fuchsia-400/30 animate-pulse"></div>
-              )}
-              <span className="relative z-10">{label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center gap-4">
-          {loading && (
-            <div className="flex items-center gap-3 text-sm">
-              <div className="relative h-5 w-5">
-                <div className="absolute inset-0 rounded-full border-2 border-cyan-500/30 animate-ping"></div>
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent"></div>
+          
+          <nav className="flex flex-wrap gap-2 md:gap-3">
+            {navItems.map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setView(mode)}
+                className={`relative overflow-hidden rounded-lg md:rounded-xl px-3 md:px-5 py-1.5 md:py-2.5 text-xs md:text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
+                  view === mode 
+                    ? "bg-gradient-to-r from-cyan-500 via-purple-500 to-fuchsia-500 text-white shadow-2xl shadow-cyan-500/50" 
+                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/50 backdrop-blur-sm"
+                }`}
+              >
+                {view === mode && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/30 via-purple-400/30 to-fuchsia-400/30 animate-pulse"></div>
+                )}
+                <span className="relative z-10">{label}</span>
+              </button>
+            ))}
+          </nav>
+          
+          <div className="flex items-center gap-3 md:gap-4 md:ml-auto">
+            {loading && (
+              <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm">
+                <div className="relative h-4 w-4 md:h-5 md:w-5">
+                  <div className="absolute inset-0 rounded-full border-2 border-cyan-500/30 animate-ping"></div>
+                  <div className="h-4 w-4 md:h-5 md:w-5 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent"></div>
+                </div>
+                <span className="text-cyan-400 font-semibold">Syncing...</span>
               </div>
-              <span className="text-cyan-400 font-semibold">Syncing...</span>
-            </div>
-          )}
-          {!loading && graph && (
-            <div className="flex items-center gap-4 text-sm font-semibold">
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
-                <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-400/50"></div>
-                <span className="text-cyan-300">{graph.stats.node_count}</span>
-                <span className="text-cyan-500/60">Nodes</span>
-              </span>
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30">
-                <div className="h-2 w-2 rounded-full bg-purple-400 animate-pulse shadow-lg shadow-purple-400/50"></div>
-                <span className="text-purple-300">{graph.stats.edge_count}</span>
-                <span className="text-purple-500/60">Links</span>
-              </span>
-            </div>
-          )}
-          {!loading && !graph && (
-            <span className="text-sm text-gray-600 font-semibold">Initializing...</span>
+            )}
+            {!loading && graph && (
+              <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm font-semibold">
+                <span className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+                  <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-400/50"></div>
+                  <span className="text-cyan-300">{graph.stats.node_count}</span>
+                  <span className="text-cyan-500/60 hidden sm:inline">Nodes</span>
+                </span>
+                <span className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                  <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-purple-400 animate-pulse shadow-lg shadow-purple-400/50"></div>
+                  <span className="text-purple-300">{graph.stats.edge_count}</span>
+                  <span className="text-purple-500/60 hidden sm:inline">Links</span>
+                </span>
+              </div>
+            )}
+            {!loading && !graph && (
+              <span className="text-xs md:text-sm text-gray-600 font-semibold">Initializing...</span>
+            )}
+          </div>
+          {error && (
+            <span className="rounded-lg md:rounded-xl border border-red-500/50 bg-red-500/10 px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-red-300 font-semibold backdrop-blur-sm" role="alert">
+              {error}
+            </span>
           )}
         </div>
-        {error && (
-          <span className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm text-red-300 font-semibold backdrop-blur-sm" role="alert">
-            {error}
-          </span>
-        )}
       </header>
 
 
       <main className="flex-1 overflow-hidden bg-black">
         <section className="h-full w-full">
           {view === "data" && (
-            <div className="absolute inset-0 top-20 overflow-y-auto">
+            <div className="absolute inset-0 top-[140px] md:top-20 overflow-y-auto">
               <DataManagement onNodeSelect={handleNodeSelect} />
             </div>
           )}
@@ -215,7 +219,7 @@ export default function App() {
             </Suspense>
           )}
           {view === "network" && (
-            <div className="absolute inset-0 top-20">
+            <div className="absolute inset-0 top-[140px] md:top-20">
               <section className="relative h-full w-full bg-black">
                 <NeuralKnowledgeNetwork 
                   nodes={graph?.nodes} 
