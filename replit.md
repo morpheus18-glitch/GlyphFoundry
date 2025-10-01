@@ -45,6 +45,23 @@ The visualization employs a four-path cinematic rendering system (October 2025) 
 
 The system automatically selects rendering paths based on camera distance and sun reference availability. Web Workers power responsive force-directed layout calculations in 3D space. Interactive node detail panels with glassmorphism allow users to click nodes and explore connections.
 
+#### Data Management Interface (October 2025)
+A comprehensive data management system provides complete CRUD operations for the knowledge graph:
+
+**Three-Tab Interface:**
+- **Browse Data**: Split view displaying Nodes and Files lists with metadata, status indicators, and click-to-view functionality
+- **Create Node**: Form for manual node creation with customizable properties (name, summary, content, color, size, glow intensity)
+- **Upload Files**: Multi-modal file upload supporting images, documents, CSV, JSON, text, video, and audio with automatic processing and node linking
+
+**Cross-View Navigation:**
+The interface features seamless bidirectional linking between Data Management and Network Visualization:
+- Clicking a node in Browse Data automatically switches to Network view and highlights the selected node with animated selection rings and flowing particle trails
+- Clicking a linked file navigates to its associated node in the cinematic visualization
+- No data reload on selection - instant view transitions preserve application state
+
+**File Processing:**
+Uploaded files are automatically processed with text extraction and linked to nodes in the knowledge graph. Files display processing status badges and "Linked" indicators when associated with nodes. The system uses local storage fallback when MinIO is unavailable.
+
 ### Graph Data Model
 The system models `Nodes` (messages, glyphs, entities with embeddings), `Edges` (weighted relationships with confidence scores), `Tags` (hierarchical labeling), and `Coordinates` (3D positioning). It also supports a 4D Glyph system for time-dimensional visualization.
 
