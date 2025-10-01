@@ -12,6 +12,8 @@ import { OrbitalControls } from "./OrbitalControls";
 import { NodeDetailPanel } from "./NodeDetailPanel";
 import { VolumetricSun } from "./VolumetricSun";
 import { CinematicEffects } from "./CinematicEffects";
+import { SelectionRing } from "./SelectionRing";
+import { FlowingEdge } from "./FlowingEdge";
 
 // --- Worker import (Vite) ---
 import ForceWorkerURL from "../workers/force3d.worker.ts?worker";
@@ -47,7 +49,7 @@ const COLOR_BG = new THREE.Color("#000000");
 const COLOR_NODE = new THREE.Color("#00ffff"); // Cyan glow
 const COLOR_NODE_IMPORTANT = new THREE.Color("#ff00ff"); // Magenta glow
 const COLOR_EDGE = new THREE.Color("#0a3f5c"); // Deep cyan-blue edges
-const MAX_NODES_FOR_LINES = 3000;
+const MAX_NODES_FOR_LINES = 5000; // Increased for more visible connections
 const FAR_LOD_DISTANCE = 900;
 
 const SOFTWARE_RENDERER_REGEX = /swiftshader|software|llvmpipe/i;
@@ -305,10 +307,12 @@ function GraphScene({
   graph,
   onSelect,
   positions,
+  selectedNodeId,
 }: {
   graph: GraphPayload;
   onSelect: (n: ApiNode) => void;
   positions?: Float32Array | null;
+  selectedNodeId?: string | null;
 }) {
   const { camera } = useThree();
   const { setControls, focusOn } = useCinematicFocus();
@@ -319,6 +323,19 @@ function GraphScene({
   
   // Sun ref for god rays in this scene
   const graphSceneSunRef = useRef<THREE.Mesh>(null);
+  
+  // Find selected node and its connections for visual effects
+  const selectedNode = useMemo(() => 
+    selectedNodeId ? graph.nodes.find(n => n.id === selectedNodeId) : null,
+    [selectedNodeId, graph.nodes]
+  );
+  
+  const selectedEdges = useMemo(() => {
+    if (!selectedNodeId) return [];
+    return graph.edges.filter(e => 
+      e.source === selectedNodeId || e.target === selectedNodeId
+    ).slice(0, 15); // Limit to 15 animated edges for performance
+  }, [selectedNodeId, graph.edges]);
 
   useEffect(() => {
     camera.position.set(0, 0, 600);
@@ -361,8 +378,35 @@ function GraphScene({
       )}
 
       {graph.nodes.length <= MAX_NODES_FOR_LINES && graph.edges.length > 0 && (
-        <EdgeLines nodesById={nodesById} edges={graph.edges} opacity={usePointsLOD ? 0.18 : 0.28} />
+        <EdgeLines nodesById={nodesById} edges={graph.edges} opacity={usePointsLOD ? 0.18 : 0.32} />
       )}
+      
+      {/* Selection ring effect for selected node */}
+      {selectedNode && (
+        <SelectionRing
+          position={[selectedNode.x ?? 0, selectedNode.y ?? 0, selectedNode.z ?? 0]}
+          color="#00ffff"
+          selected={true}
+        />
+      )}
+      
+      {/* Flowing animated edges for selected node connections */}
+      {!usePointsLOD && selectedEdges.length > 0 && selectedEdges.map((edge, i) => {
+        const sourceNode = nodesById.get(edge.source);
+        const targetNode = nodesById.get(edge.target);
+        if (!sourceNode || !targetNode) return null;
+        
+        return (
+          <FlowingEdge
+            key={`${edge.source}-${edge.target}-${i}`}
+            start={new THREE.Vector3(sourceNode.x ?? 0, sourceNode.y ?? 0, sourceNode.z ?? 0)}
+            end={new THREE.Vector3(targetNode.x ?? 0, targetNode.y ?? 0, targetNode.z ?? 0)}
+            color="#00ffff"
+            speed={0.6 + Math.random() * 0.8}
+          />
+        );
+      })}
+      
       {/* Cinematic Post-Processing with LOD-based DOF and God Rays */}
       <CinematicEffects sunRef={graphSceneSunRef} useDOF={!usePointsLOD} />
 
@@ -848,6 +892,41 @@ export default function NeuralKnowledgeNetwork({
                   />
                 );
               })}
+              
+              {/* Selection Ring Effect for Selected Node */}
+              {selected && posRef.current && (posRef.current as any)?.[selected.id] && (
+                <SelectionRing
+                  position={[
+                    (posRef.current as any)[selected.id].x,
+                    (posRef.current as any)[selected.id].y,
+                    (posRef.current as any)[selected.id].z
+                  ]}
+                  color="#00ffff"
+                  selected={true}
+                />
+              )}
+              
+              {/* Flowing Animated Edges for Selected Node Connections */}
+              {selected && posRef.current && graph.edges
+                .filter(e => e.source === selected.id || e.target === selected.id)
+                .slice(0, 20)
+                .map((edge, idx) => {
+                  const sourcePos = (posRef.current as any)?.[edge.source];
+                  const targetPos = (posRef.current as any)?.[edge.target];
+                  if (!sourcePos || !targetPos) return null;
+                  
+                  return (
+                    <FlowingEdge
+                      key={`flowing-${edge.source}-${edge.target}-${idx}`}
+                      start={new THREE.Vector3(sourcePos.x, sourcePos.y, sourcePos.z)}
+                      end={new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z)}
+                      color="#ff00ff"
+                      speed={0.8 + Math.random() * 0.6}
+                      particleCount={25}
+                    />
+                  );
+                })
+              }
               
               {/* Cinematic 4K Post-Processing: ACES Tone Mapping, Volumetric Lighting, Anamorphic Bloom */}
               <CinematicEffects sunRef={sunRef} useDOF={true} />

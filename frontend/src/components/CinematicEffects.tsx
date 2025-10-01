@@ -4,7 +4,7 @@ import { EffectComposer, Bloom, DepthOfField, SMAA, ChromaticAberration, GodRays
 import { BlendFunction, KernelSize } from 'postprocessing';
 
 interface CinematicEffectsProps {
-  sunRef?: React.RefObject<THREE.Mesh>;
+  sunRef?: React.RefObject<THREE.Mesh | null>;
   useDOF?: boolean;
 }
 
@@ -60,11 +60,11 @@ export function CinematicEffects({ sunRef, useDOF = true }: CinematicEffectsProp
     return (
       <EffectComposer multisampling={8} enableNormalPass={false}>
         <Bloom 
-          intensity={2.8} 
-          luminanceThreshold={0.08} 
-          luminanceSmoothing={0.95}
+          intensity={3.5} 
+          luminanceThreshold={0.05} 
+          luminanceSmoothing={0.92}
           mipmapBlur={true}
-          radius={1.3}
+          radius={1.6}
           levels={9}
           kernelSize={KernelSize.LARGE}
         />
@@ -97,11 +97,11 @@ export function CinematicEffects({ sunRef, useDOF = true }: CinematicEffectsProp
     return (
       <EffectComposer multisampling={8} enableNormalPass={false}>
         <Bloom 
-          intensity={2.8} 
-          luminanceThreshold={0.08} 
-          luminanceSmoothing={0.95}
+          intensity={3.5} 
+          luminanceThreshold={0.05} 
+          luminanceSmoothing={0.92}
           mipmapBlur={true}
-          radius={1.3}
+          radius={1.6}
           levels={9}
           kernelSize={KernelSize.LARGE}
         />
