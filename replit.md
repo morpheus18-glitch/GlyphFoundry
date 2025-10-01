@@ -68,8 +68,30 @@ The system models `Nodes` (messages, glyphs, entities with embeddings), `Edges` 
 ### Native Integration
 High-performance components include Rust kernels for TAA denoising via Python bindings and optional WebAssembly modules for client-side acceleration.
 
-### User Personalization & Account Management
-The platform supports user-level personalization with JWT-based authentication and role-based access control. It includes features for managing user preferences, custom AI instructions, learned behavioral profiles, and personalized dashboards, all secured with RLS policies.
+### User Personalization & Account Management (October 2025 Update)
+The platform features a comprehensive user settings and profile management system:
+
+**User Settings Interface:**
+- **Profile Management**: Update first name, last name, email, and profile image URL
+- **General Preferences**: Theme selection (dark/light), custom AI instructions for personalized assistance
+- **Visualization Settings**: Adjustable force strength for graph layout, toggle node labels visibility
+
+**Backend Architecture:**
+- RESTful API endpoints at `/api/v1/user/settings` and `/api/v1/user/profile`
+- User settings stored in PostgreSQL with JSONB fields for flexible preferences
+- Profile updates with validation and real-time synchronization
+- Tenant-scoped data isolation for multi-tenant SaaS architecture
+
+**Interactive Onboarding:**
+A 6-step interactive walkthrough guides new users through key platform features:
+1. Welcome and platform introduction
+2. Knowledge Network 3D visualization tour
+3. Data management (browse, create, upload)
+4. User settings and personalization
+5. Overview dashboard and analytics
+6. Completion with persistent state (localStorage)
+
+The walkthrough features cinematic design with gradient backgrounds, progress tracking, step pagination, and seamless view transitions.
 
 ### Multi-Modal File Ingestion System
 A robust system allows ingestion of various file types (images, documents, videos, audio, text, CSV, JSON) from mobile devices, with automatic text extraction and MinIO/S3 integration for storage.
