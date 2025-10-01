@@ -60,6 +60,13 @@ void main() {
   o_vel = vel;
 }`;
 
+const UPDATE_FS = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+void main() {
+  fragColor = vec4(0.0);
+}`;
+
 export type ParticleBuffer = {
   vao: WebGLVertexArrayObject;
   position: WebGLBuffer;
@@ -80,11 +87,14 @@ export class TFParticleSim {
     this.gl = gl;
     this.count = count;
     const vs = compile(gl, gl.VERTEX_SHADER, UPDATE_VS);
+    const fs = compile(gl, gl.FRAGMENT_SHADER, UPDATE_FS);
     this.updateProgram = gl.createProgram()!;
     gl.attachShader(this.updateProgram, vs);
+    gl.attachShader(this.updateProgram, fs);
     gl.transformFeedbackVaryings(this.updateProgram, ["o_pos", "o_vel"], gl.SEPARATE_ATTRIBS);
     gl.linkProgram(this.updateProgram);
     gl.deleteShader(vs);
+    gl.deleteShader(fs);
     if (!gl.getProgramParameter(this.updateProgram, gl.LINK_STATUS)) {
       const info = gl.getProgramInfoLog(this.updateProgram);
       gl.deleteProgram(this.updateProgram);
