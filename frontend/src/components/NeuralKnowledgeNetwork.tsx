@@ -46,9 +46,9 @@ const BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TOKEN = import.meta.env.VITE_GRAPH_TOKEN || "";
 
 const COLOR_BG = new THREE.Color("#000000");
-const COLOR_NODE = new THREE.Color("#00ffff"); // Cyan glow
-const COLOR_NODE_IMPORTANT = new THREE.Color("#ff00ff"); // Magenta glow
-const COLOR_EDGE = new THREE.Color("#0a3f5c"); // Deep cyan-blue edges
+const COLOR_NODE = new THREE.Color("#00ffff").multiplyScalar(2.5); // Bright neon cyan
+const COLOR_NODE_IMPORTANT = new THREE.Color("#ff00ff").multiplyScalar(2.5); // Bright neon magenta
+const COLOR_EDGE = new THREE.Color("#00ffff").multiplyScalar(1.5); // Bright neon cyan edges
 const MAX_NODES_FOR_LINES = 5000; // Increased for more visible connections
 const FAR_LOD_DISTANCE = 900;
 
@@ -241,11 +241,13 @@ function InstancedNodes({
     >
       <icosahedronGeometry args={[1, 2]} />
       <meshPhysicalMaterial
-        metalness={0.4}
-        roughness={0.35}
-        clearcoat={0.6}
-        clearcoatRoughness={0.3}
-        envMapIntensity={1.2}
+        metalness={0.3}
+        roughness={0.2}
+        clearcoat={0.8}
+        clearcoatRoughness={0.1}
+        envMapIntensity={1.5}
+        emissive={COLOR_NODE}
+        emissiveIntensity={0.8}
         vertexColors
       />
       <instancedBufferAttribute attach="instanceColor" args={[colorArray, 3]} />
@@ -360,8 +362,8 @@ function GraphScene({
       {/* Volumetric Sun for God Rays */}
       <VolumetricSun ref={graphSceneSunRef} />
       
-      <ambientLight intensity={0.4} />
-      <directionalLight intensity={0.9} position={[600, 400, 300]} castShadow shadow-mapSize={[2048, 2048]} />
+      <ambientLight intensity={0.2} />
+      <directionalLight intensity={0.5} position={[600, 400, 300]} castShadow shadow-mapSize={[2048, 2048]} />
       <Environment preset="night" background={false} />
 
       {usePointsLOD ? (
@@ -378,7 +380,7 @@ function GraphScene({
       )}
 
       {graph.nodes.length <= MAX_NODES_FOR_LINES && graph.edges.length > 0 && (
-        <EdgeLines nodesById={nodesById} edges={graph.edges} opacity={usePointsLOD ? 0.18 : 0.32} />
+        <EdgeLines nodesById={nodesById} edges={graph.edges} opacity={usePointsLOD ? 0.35 : 0.65} />
       )}
       
       {/* Selection ring effect for selected node */}
@@ -732,10 +734,10 @@ export default function NeuralKnowledgeNetwork({
             nodes: data.nodes.map((n) => ({ id: n.id, x: n.x, y: n.y, z: n.z })),
             edges: data.edges.map((e) => ({ source: e.source, target: e.target, weight: e.weight })),
             params: {
-              repulsion: -1600,
-              restLength: 56,
-              springK: 0.03,
-              gravity: 0.0018,
+              repulsion: -2200,
+              restLength: 80,
+              springK: 0.015,
+              gravity: 0.0008,
               cellSize: 110,
               frameHz: 30,
             },
@@ -840,7 +842,7 @@ export default function NeuralKnowledgeNetwork({
             onCreated={({ gl, scene }) => {
               gl.shadowMap.enabled = true;
               gl.shadowMap.type = THREE.PCFSoftShadowMap;
-              scene.fog = new THREE.FogExp2(new THREE.Color('#000511'), 0.0008);
+              scene.fog = new THREE.FogExp2(new THREE.Color('#000000'), 0.001);
             }}
           >
             <Suspense fallback={<Html center style={{ color: "#4ecdc4" }}>Loading constellation…</Html>}>
