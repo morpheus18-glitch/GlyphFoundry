@@ -193,22 +193,9 @@ async def get_knowledge_graph(
         raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' not found")
     actual_tenant_id = str(tenant_check.id)
     
-    # Enhanced graph query with 3D positioning
+    # Enhanced graph query with 3D positioning - nodes independent of edges
     sql = text("""
-        WITH recent_edges AS (
-            SELECT *
-            FROM edges_v2
-            WHERE tenant_id = :tenant_id
-              AND created_at >= (NOW() - (:window_minutes || ' minutes')::interval)
-            ORDER BY weight DESC, confidence DESC
-            LIMIT :limit_edges
-        ),
-        node_ids AS (
-            SELECT DISTINCT src_id AS id FROM recent_edges
-            UNION
-            SELECT DISTINCT dst_id FROM recent_edges
-        ),
-        positioned_nodes AS (
+        WITH positioned_nodes AS (
             SELECT 
                 n.*,
                 -- Generate spiral galaxy positioning for nodes without positions
@@ -222,10 +209,20 @@ async def get_knowledge_graph(
                     (RANDOM() - 0.5) * 50 + SIN(COALESCE(n.importance_score, 0.5) * 10) * 20
                 ELSE n.pos_z END as calc_z
             FROM nodes_v2 n
-            JOIN node_ids s ON s.id = n.id
             WHERE n.tenant_id = :tenant_id
+              AND n.created_at >= (NOW() - (:window_minutes || ' minutes')::interval)
             ORDER BY COALESCE(n.importance_score, 0) DESC, n.created_at DESC
             LIMIT :limit_nodes
+        ),
+        recent_edges AS (
+            SELECT e.*
+            FROM edges_v2 e
+            JOIN positioned_nodes src ON src.id = e.src_id
+            JOIN positioned_nodes dst ON dst.id = e.dst_id
+            WHERE e.tenant_id = :tenant_id
+              AND e.created_at >= (NOW() - (:window_minutes || ' minutes')::interval)
+            ORDER BY e.weight DESC, e.confidence DESC
+            LIMIT :limit_edges
         )
         SELECT 
             'nodes' as type,

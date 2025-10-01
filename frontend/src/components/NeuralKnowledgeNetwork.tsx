@@ -650,7 +650,7 @@ export default function NeuralKnowledgeNetwork({
   const [selected, setSelected] = useState<ApiNode | null>(null);
   const [recent, setRecent] = useState<ApiNode[]>([]);
   const [q, setQ] = useState("");
-  const [gpuInfo, setGpuInfo] = useState<{ checked: boolean; available: boolean }>({ checked: true, available: true });
+  const [gpuInfo, setGpuInfo] = useState<{ checked: boolean; available: boolean }>({ checked: false, available: false });
 
   // Worker + live positions
   const workerRef = useRef<Worker | null>(null);
@@ -659,6 +659,12 @@ export default function NeuralKnowledgeNetwork({
   
   // Sun ref for god rays effect
   const sunRef = useRef<THREE.Mesh>(null);
+
+  // Check GPU hardware acceleration on mount
+  useEffect(() => {
+    const hasGPU = detectHardwareAcceleration();
+    setGpuInfo({ checked: true, available: hasGPU });
+  }, []);
 
   // Fetch/props + boot worker
   useEffect(() => {
@@ -833,7 +839,7 @@ export default function NeuralKnowledgeNetwork({
               antialias: true, 
               powerPreference: "high-performance",
               toneMapping: THREE.ACESFilmicToneMapping,
-              toneMappingExposure: 1.4,
+              toneMappingExposure: 1.6,
               outputColorSpace: THREE.SRGBColorSpace,
             }}
             shadows
@@ -842,6 +848,7 @@ export default function NeuralKnowledgeNetwork({
             onCreated={({ gl, scene }) => {
               gl.shadowMap.enabled = true;
               gl.shadowMap.type = THREE.PCFSoftShadowMap;
+              gl.setClearColor(new THREE.Color('#000000'), 1);
               scene.background = new THREE.Color('#000000');
               scene.fog = new THREE.FogExp2(new THREE.Color('#000000'), 0.001);
             }}

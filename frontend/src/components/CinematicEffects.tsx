@@ -16,7 +16,7 @@ export function CinematicEffects({ sunRef, useDOF = true }: CinematicEffectsProp
     // Include DOF when requested for close-up cinematic focus
     if (useDOF) {
       return (
-        <EffectComposer multisampling={8} enableNormalPass={false}>
+        <EffectComposer multisampling={8} enableNormalPass={false} frameBufferType={THREE.HalfFloatType}>
           <Bloom 
             intensity={2.8} 
             luminanceThreshold={0.08} 
@@ -58,7 +58,7 @@ export function CinematicEffects({ sunRef, useDOF = true }: CinematicEffectsProp
     
     // God rays without DOF for far LOD
     return (
-      <EffectComposer multisampling={8} enableNormalPass={false}>
+      <EffectComposer multisampling={8} enableNormalPass={false} frameBufferType={THREE.HalfFloatType}>
         <Bloom 
           intensity={3.5} 
           luminanceThreshold={0.05} 
@@ -95,7 +95,7 @@ export function CinematicEffects({ sunRef, useDOF = true }: CinematicEffectsProp
   // Without god rays - still respects useDOF
   if (useDOF) {
     return (
-      <EffectComposer multisampling={8} enableNormalPass={false}>
+      <EffectComposer multisampling={8} enableNormalPass={false} frameBufferType={THREE.HalfFloatType}>
         <Bloom 
           intensity={3.5} 
           luminanceThreshold={0.05} 
@@ -127,7 +127,7 @@ export function CinematicEffects({ sunRef, useDOF = true }: CinematicEffectsProp
   
   // Far LOD: No DOF
   return (
-    <EffectComposer multisampling={8} enableNormalPass={false}>
+    <EffectComposer multisampling={8} enableNormalPass={false} frameBufferType={THREE.HalfFloatType}>
       <Bloom 
         intensity={2.8} 
         luminanceThreshold={0.08} 
