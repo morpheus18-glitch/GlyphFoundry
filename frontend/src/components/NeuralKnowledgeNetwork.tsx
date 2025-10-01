@@ -172,6 +172,7 @@ function InstancedNodes({
   worldScale = 1.6,
   positions,
   reduceMotion,
+  birthTimestamps,
 }: {
   nodes: ApiNode[];
   onSelect: (n: ApiNode) => void;
@@ -179,6 +180,7 @@ function InstancedNodes({
   worldScale?: number;
   positions?: Float32Array | null;
   reduceMotion?: boolean;
+  birthTimestamps?: Map<string, number>;
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null!);
 
@@ -206,9 +208,16 @@ function InstancedNodes({
       const z = positions ? positions[i * 3 + 2] : (n.z ?? 0);
       dummy.position.set(x, y, z);
 
+      // Birth animation: scale from 0 to full size over 1.5 seconds with elastic ease
+      const birthTime = birthTimestamps?.get(n.id);
+      const birthAge = birthTime ? Math.min(1, (Date.now() - birthTime) / 1500) : 1;
+      const birthScale = birthTime && birthAge < 1
+        ? birthAge * birthAge * (3 - 2 * birthAge) // Smooth ease-in-out
+        : 1;
+
       const base = 0.8 + (n.importance ?? Math.min(1, (n.degree ?? 1) / 8)) * 1.6;
       const pulse = reduceMotion ? 1 : 1 + 0.03 * Math.sin(t * 2 + i * 0.3);
-      dummy.scale.setScalar(base * pulse * worldScale);
+      dummy.scale.setScalar(base * pulse * worldScale * birthScale);
 
       dummy.updateMatrix();
       meshRef.current.setMatrixAt(i, dummy.matrix);
@@ -310,11 +319,13 @@ function GraphScene({
   onSelect,
   positions,
   selectedNodeId,
+  birthTimestamps,
 }: {
   graph: GraphPayload;
   onSelect: (n: ApiNode) => void;
   positions?: Float32Array | null;
   selectedNodeId?: string | null;
+  birthTimestamps?: Map<string, number>;
 }) {
   const { camera } = useThree();
   const { setControls, focusOn } = useCinematicFocus();
@@ -375,6 +386,7 @@ function GraphScene({
           focusOn={focusOn}
           worldScale={1.6}
           reduceMotion={reduceMotion}
+          birthTimestamps={birthTimestamps}
           positions={positions}
         />
       )}
@@ -651,6 +663,8 @@ export default function NeuralKnowledgeNetwork({
   const [recent, setRecent] = useState<ApiNode[]>([]);
   const [q, setQ] = useState("");
   const [gpuInfo, setGpuInfo] = useState<{ checked: boolean; available: boolean }>({ checked: false, available: false });
+  const [liveMode, setLiveMode] = useState(true); // Start in organic growth mode
+  const [birthTimestamps, setBirthTimestamps] = useState<Map<string, number>>(new Map()); // Track node birth times
 
   // Worker + live positions
   const workerRef = useRef<Worker | null>(null);
@@ -682,7 +696,9 @@ export default function NeuralKnowledgeNetwork({
         if (propNodes && propEdges) {
           data = normalizePositions({ nodes: propNodes, edges: propEdges });
         } else {
-          const res = await fetch(`${BASE}/data?window_minutes=4320&limit_nodes=1500&limit_edges=5000`,
+          // In live mode, start with empty canvas (0 nodes), otherwise load full history
+          const nodeLimit = liveMode ? 0 : 1500;
+          const res = await fetch(`${BASE}/data?window_minutes=4320&limit_nodes=${nodeLimit}&limit_edges=5000`,
             { headers: authHeaders() });
           let raw: any;
           if (!res.ok) {
@@ -774,7 +790,7 @@ export default function NeuralKnowledgeNetwork({
       posRef.current = null;
       idsRef.current = null;
     };
-  }, [propNodes, propEdges, gpuInfo]);
+  }, [propNodes, propEdges, gpuInfo, liveMode]);
 
   const pushRecent = useCallback((n: ApiNode) => {
     setRecent((r) => [n, ...r.filter((x) => x.id !== n.id)].slice(0, 10));
@@ -785,6 +801,71 @@ export default function NeuralKnowledgeNetwork({
     pushRecent(n);
     workerRef.current?.postMessage({ type: "PIN", id: n.id });
   }, [pushRecent]);
+
+  // Organic growth: Poll for new nodes in live mode
+  useEffect(() => {
+    if (!liveMode || !gpuInfo.available) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`${BASE}/data?window_minutes=525600&limit_nodes=100&limit_edges=200`, {
+          headers: authHeaders()
+        });
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        const newNodes = (data.nodes || []).filter((n: ApiNode) => 
+          !graph.nodes.find(existing => existing.id === n.id)
+        );
+        
+        if (newNodes.length > 0) {
+          // Mark new nodes with birth timestamps for animation
+          const now = Date.now();
+          setBirthTimestamps(prev => {
+            const next = new Map(prev);
+            newNodes.forEach((n: ApiNode) => next.set(n.id, now));
+            return next;
+          });
+
+          // Add new nodes and edges to graph
+          const updatedGraph = {
+            nodes: [...graph.nodes, ...newNodes],
+            edges: [...graph.edges, ...(data.edges || []).filter((e: ApiEdge) => 
+              !graph.edges.find(existing => 
+                existing.source === e.source && existing.target === e.target
+              )
+            )],
+            stats: data.stats || graph.stats
+          };
+          
+          const normalized = normalizePositions(updatedGraph);
+          setGraph(normalized);
+
+          // Update worker with new nodes
+          if (workerRef.current) {
+            workerRef.current.postMessage({
+              type: "INIT",
+              nodes: normalized.nodes.map((n) => ({ id: n.id, x: n.x, y: n.y, z: n.z })),
+              edges: normalized.edges.map((e) => ({ source: e.source, target: e.target, weight: e.weight })),
+              params: {
+                repulsion: -2200,
+                restLength: 80,
+                springK: 0.015,
+                gravity: 0.0008,
+                cellSize: 110,
+                frameHz: 30,
+              },
+            });
+            workerRef.current.postMessage({ type: "START" });
+          }
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [liveMode, graph.nodes, graph.edges, graph.stats, gpuInfo.available]);
 
   // Handle external node selection
   useEffect(() => {
@@ -883,14 +964,21 @@ export default function NeuralKnowledgeNetwork({
                 const pos = (posRef.current as any)?.[node.id];
                 if (!pos) return null;
                 
+                // Birth animation: scale from 0 to full size over 1.5 seconds
+                const birthTime = birthTimestamps.get(node.id);
+                const birthAge = birthTime ? Math.min(1, (Date.now() - birthTime) / 1500) : 1;
+                const birthScale = birthTime && birthAge < 1
+                  ? birthAge * birthAge * (3 - 2 * birthAge) // Smooth ease-in-out
+                  : 1;
+                
                 return (
                   <NeonWispNode
                     key={node.id}
                     position={[pos.x ?? 0, pos.y ?? 0, pos.z ?? 0]}
                     onClick={() => handleSelect(node)}
                     color="#4ecdc4"
-                    size={1.5}
-                    glow={1.8}
+                    size={1.5 * birthScale}
+                    glow={1.8 * birthScale}
                     importance={node.importance || 0.5}
                   />
                 );
