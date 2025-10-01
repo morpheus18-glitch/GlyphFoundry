@@ -40,10 +40,10 @@ type GraphPayload = {
 const BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TOKEN = import.meta.env.VITE_GRAPH_TOKEN || "";
 
-const COLOR_BG = new THREE.Color("#0b0e13");
-const COLOR_NODE = new THREE.Color("#4A90E2");
-const COLOR_NODE_IMPORTANT = new THREE.Color("#B19CD9");
-const COLOR_EDGE = new THREE.Color("#2b313d");
+const COLOR_BG = new THREE.Color("#000000");
+const COLOR_NODE = new THREE.Color("#00ffff"); // Cyan glow
+const COLOR_NODE_IMPORTANT = new THREE.Color("#ff00ff"); // Magenta glow
+const COLOR_EDGE = new THREE.Color("#0a3f5c"); // Deep cyan-blue edges
 const MAX_NODES_FOR_LINES = 3000;
 const FAR_LOD_DISTANCE = 900;
 
@@ -355,15 +355,36 @@ function GraphScene({
         <EdgeLines nodesById={nodesById} edges={graph.edges} opacity={usePointsLOD ? 0.18 : 0.28} />
       )}
       {usePointsLOD ? (
-        <EffectComposer multisampling={0} enableNormalPass>
+        <EffectComposer multisampling={8} enableNormalPass={false}>
+          <Bloom 
+            intensity={2.2} 
+            luminanceThreshold={0.1} 
+            luminanceSmoothing={0.95}
+            mipmapBlur={true}
+            radius={1.1}
+            levels={8}
+          />
+          <ChromaticAberration offset={[0.0015, 0.0015]} />
           <SMAA />
-          <Bloom intensity={0.8} luminanceThreshold={0.25} luminanceSmoothing={0.3} mipmapBlur />
         </EffectComposer>
       ) : (
-        <EffectComposer multisampling={0} enableNormalPass>
+        <EffectComposer multisampling={8} enableNormalPass={false}>
+          <Bloom 
+            intensity={2.5} 
+            luminanceThreshold={0.1} 
+            luminanceSmoothing={0.95}
+            mipmapBlur={true}
+            radius={1.2}
+            levels={9}
+          />
+          <DepthOfField 
+            focusDistance={0.008} 
+            focalLength={0.015} 
+            bokehScale={4.0}
+            height={700}
+          />
+          <ChromaticAberration offset={[0.002, 0.002]} />
           <SMAA />
-          <Bloom intensity={0.8} luminanceThreshold={0.25} luminanceSmoothing={0.3} mipmapBlur />
-          <DepthOfField focusDistance={0.02} focalLength={0.02} bokehScale={1.2} height={480} />
         </EffectComposer>
       )}
 
@@ -836,71 +857,78 @@ export default function NeuralKnowledgeNetwork({
                     key={`${edge.source}-${edge.target}-${idx}`}
                     start={[sourcePos.x, sourcePos.y, sourcePos.z]}
                     end={[targetPos.x, targetPos.y, targetPos.z]}
-                    color="#4ecdc4"
-                    thickness={0.5}
-                    opacity={0.3}
-                    animationSpeed={1.0}
+                    color="#00ffff"
+                    thickness={0.6}
+                    opacity={0.5}
+                    animationSpeed={1.5}
                   />
                 );
               })}
               
               {/* Cinematic HDR Post-Processing for 4K */}
-              <EffectComposer enableNormalPass={false}>
+              <EffectComposer enableNormalPass={false} multisampling={8}>
                 <Bloom 
-                  intensity={1.2} 
-                  luminanceThreshold={0.2} 
-                  luminanceSmoothing={0.9}
+                  intensity={2.5} 
+                  luminanceThreshold={0.1} 
+                  luminanceSmoothing={0.95}
                   mipmapBlur={true}
-                  radius={0.85}
+                  radius={1.2}
+                  levels={9}
                 />
                 <DepthOfField 
-                  focusDistance={0.01} 
-                  focalLength={0.02} 
-                  bokehScale={2.5}
+                  focusDistance={0.008} 
+                  focalLength={0.015} 
+                  bokehScale={4.0}
+                  height={700}
                 />
-                <ChromaticAberration offset={[0.001, 0.001]} />
+                <ChromaticAberration offset={[0.002, 0.002]} />
                 <SMAA />
               </EffectComposer>
             </Suspense>
           </Canvas>
 
-          {/* Status HUD */}
-          <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-lg border border-[rgba(255,255,255,.08)] bg-[rgba(15,19,26,.8)] px-3 py-2 text-xs text-neutral-300 backdrop-blur">
+          {/* Holographic Status HUD */}
+          <div className="pointer-events-none absolute left-4 top-4 z-20 rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-black/90 via-cyan-950/30 to-black/80 px-4 py-3 text-xs backdrop-blur-xl shadow-2xl shadow-cyan-500/20">
             {loading ? (
-              <span className="text-sky-300">loading…</span>
+              <span className="text-cyan-300 font-bold uppercase tracking-wider animate-pulse">Syncing Network...</span>
             ) : (
-              <>
-                Nodes: {graph.nodes.length} · Edges: {graph.edges.length}
-                <span className="ml-2 text-[11px] uppercase tracking-wide text-neutral-500">{renderModeLabel}</span>
-              </>
+              <div className="flex items-center gap-3">
+                <span className="text-cyan-300 font-bold">{graph.nodes.length}</span>
+                <span className="text-cyan-500/60 uppercase tracking-wider text-[10px]">Nodes</span>
+                <div className="h-3 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"></div>
+                <span className="text-purple-300 font-bold">{graph.edges.length}</span>
+                <span className="text-purple-500/60 uppercase tracking-wider text-[10px]">Edges</span>
+                <div className="h-3 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"></div>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-500/40 font-semibold">{renderModeLabel}</span>
+              </div>
             )}
           </div>
 
-          {/* Search HUD */}
-          <div className="absolute left-1/2 top-3 z-20 w-[min(720px,90vw)] -translate-x-1/2">
-            <div className="rounded-xl border border-[rgba(255,255,255,.08)] bg-[rgba(15,19,26,.7)] backdrop-blur">
+          {/* Holographic Search HUD */}
+          <div className="absolute left-1/2 top-4 z-20 w-[min(720px,90vw)] -translate-x-1/2">
+            <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-black/95 via-cyan-950/20 to-black/90 backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
               <input
-                className="w-full bg-transparent px-4 py-2.5 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none"
-                placeholder="Search nodes by label, id, or summary…"
+                className="w-full bg-transparent px-5 py-3 text-sm text-cyan-100 placeholder:text-cyan-700 focus:outline-none font-medium"
+                placeholder="◇ Search knowledge network..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
               {q && searchResults.length > 0 && (
-                <div className="max-h-64 overflow-auto border-t border-[rgba(255,255,255,.06)]">
+                <div className="max-h-64 overflow-auto border-t border-cyan-500/10">
                   {searchResults.map((n) => (
                     <button
                       key={n.id}
                       onClick={() => { setSelected(n); pushRecent(n); setQ(""); }}
-                      className="flex w-full items-start gap-3 px-4 py-2 text-left hover:bg-[rgba(255,255,255,.04)]"
+                      className="flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-cyan-500/10 transition-colors border-b border-cyan-500/5 last:border-b-0"
                     >
-                      <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-sky-400" />
+                      <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-400/50" />
                       <div className="min-w-0">
-                        <div className="truncate text-sm text-neutral-100">{n.label || n.id}</div>
-                        <div className="truncate text-xs text-neutral-400">{n.summary || n.id}</div>
+                        <div className="truncate text-sm text-cyan-100 font-semibold">{n.label || n.id}</div>
+                        <div className="truncate text-xs text-cyan-500/70">{n.summary || n.id}</div>
                       </div>
                       {typeof n.degree === "number" && (
-                        <div className="ml-auto shrink-0 rounded border border-[rgba(255,255,255,.08)] px-1.5 py-0.5 text-[10px] text-neutral-400">
-                          deg {n.degree}
+                        <div className="ml-auto shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-300 font-bold">
+                          {n.degree}
                         </div>
                       )}
                     </button>
@@ -908,7 +936,7 @@ export default function NeuralKnowledgeNetwork({
                 </div>
               )}
               {q && searchResults.length === 0 && (
-                <div className="border-t border-[rgba(255,255,255,.06)] px-4 py-2.5 text-xs text-neutral-400">No matches</div>
+                <div className="border-t border-cyan-500/10 px-5 py-3 text-xs text-cyan-500/50 uppercase tracking-wider">No matches found</div>
               )}
             </div>
           </div>
@@ -940,16 +968,16 @@ export default function NeuralKnowledgeNetwork({
             />
           )}
 
-          {/* Recent selections */}
+          {/* Holographic Recent Selections */}
           {recent.length > 0 && (
-            <div className="absolute bottom-3 left-3 z-20 w-[min(460px,95vw)] rounded-xl border border-[rgba(255,255,255,.08)] bg-[rgba(15,19,26,.8)] p-2 backdrop-blur">
-              <div className="mb-1 px-1 text-xs text-neutral-400">Recent</div>
+            <div className="absolute bottom-4 left-4 z-20 w-[min(460px,95vw)] rounded-2xl border border-purple-500/20 bg-gradient-to-br from-black/95 via-purple-950/20 to-black/90 p-3 backdrop-blur-xl shadow-2xl shadow-purple-500/10">
+              <div className="mb-2 px-1 text-[10px] uppercase tracking-[0.2em] text-purple-500/60 font-bold">Recent</div>
               <div className="flex flex-wrap gap-2">
                 {recent.map((n) => (
                   <button
                     key={n.id}
                     onClick={() => setSelected(n)}
-                    className="truncate rounded-lg border border-[rgba(255,255,255,.1)] bg-[rgba(255,255,255,.03)] px-2 py-1 text-xs text-neutral-200 hover:bg-[rgba(255,255,255,.06)]"
+                    className="truncate rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs text-purple-200 hover:bg-purple-500/20 hover:border-purple-400/50 transition-all font-semibold"
                     title={n.label || n.id}
                   >
                     {(n.label || n.id).slice(0, 28)}
@@ -959,9 +987,9 @@ export default function NeuralKnowledgeNetwork({
             </div>
           )}
 
-          {/* Controls legend */}
-          <div className="pointer-events-none absolute bottom-3 right-3 z-20 rounded-lg border border-[rgba(255,255,255,.08)] bg-[rgba(15,19,26,.8)] px-3 py-2 text-xs text-neutral-400 backdrop-blur">
-            Left-drag: rotate · Right-drag: pan · Wheel: zoom · Click node: focus
+          {/* Holographic Controls Legend */}
+          <div className="pointer-events-none absolute bottom-4 right-4 z-20 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-black/95 via-cyan-950/20 to-black/90 px-4 py-3 text-[10px] uppercase tracking-wider text-cyan-500/60 backdrop-blur-xl shadow-2xl shadow-cyan-500/10 font-semibold">
+            <span className="text-cyan-400">L-Drag</span> Rotate · <span className="text-cyan-400">R-Drag</span> Pan · <span className="text-cyan-400">Wheel</span> Zoom · <span className="text-cyan-400">Click</span> Focus
           </div>
         </>
       ) : (
