@@ -1,11 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
-import { NodesPage } from "./pages/NodesPage";
-import { EmbeddingsPage } from "./pages/EmbeddingsPage";
-import { SettingsPage } from "./pages/SettingsPage";
 import NeuralKnowledgeNetwork from "./components/NeuralKnowledgeNetwork";
 
-const CinematicScenes = lazy(() => import("./components/CinematicScenes"));
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
 type ApiNode = {
@@ -27,7 +23,7 @@ type GraphPayload = {
 
 type TagRow = { tag_id: string; slug: string; name: string; node_id: string; confidence: number };
 
-type ViewMode = "overview" | "graph" | "cinematic" | "nodes" | "embeddings" | "settings" | "admin";
+type ViewMode = "network" | "overview" | "admin";
 
 const GRAPH_BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TAGS_BASE = import.meta.env.VITE_TAGS_BASE || "/tags";
@@ -42,7 +38,7 @@ export default function App() {
   const [tags, setTags] = useState<TagRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<ViewMode>("graph");
+  const [view, setView] = useState<ViewMode>("network");
   const [windowMinutes, setWindowMinutes] = useState<number>(4320);
   const [limitNodes, setLimitNodes] = useState<number>(300);
   const [limitEdges, setLimitEdges] = useState<number>(1500);
@@ -111,9 +107,8 @@ export default function App() {
   }, [headers, windowMinutes, limitNodes, limitEdges, refreshToken]);
 
   const navItems: [ViewMode, string][] = [
+    ["network", "Knowledge Network"],
     ["overview", "Overview"],
-    ["graph", "Graph"],
-    ["cinematic", "Cinematic"],
     ["admin", "Admin"],
   ];
 
@@ -121,10 +116,10 @@ export default function App() {
     <div className="flex min-h-screen flex-col bg-black text-gray-100">
       <header className="absolute top-0 left-0 right-0 z-50 flex flex-wrap items-center gap-4 bg-black/50 backdrop-blur-md px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-purple-500/50">
-            KG
+          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-500 via-red-600 to-amber-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-orange-500/50">
+            GF
           </div>
-          <strong className="text-xl font-bold text-white tracking-wide">Knowledge Network</strong>
+          <strong className="text-xl font-bold text-white tracking-wide">Glyph Foundry</strong>
         </div>
         <nav className="flex flex-wrap gap-2">
           {navItems.map(([mode, label]) => (
@@ -134,7 +129,7 @@ export default function App() {
               onClick={() => setView(mode)}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 view === mode 
-                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-blue-500/50" 
+                  ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/50" 
                   : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/20"
               }`}
             >
@@ -170,68 +165,6 @@ export default function App() {
         )}
       </header>
 
-      {view === "graph" && (
-        <div className="border-b border-gray-200 bg-white/60">
-          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-4 px-6 py-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="font-medium">Time Range:</span>
-                <select
-                  value={windowMinutes}
-                  onChange={(event) => setWindowMinutes(Number(event.target.value))}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  {WINDOW_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option} minutes
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="font-medium">Max Nodes:</span>
-                <select
-                  value={limitNodes}
-                  onChange={(event) => setLimitNodes(Number(event.target.value))}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  {NODE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="font-medium">Max Connections:</span>
-                <select
-                  value={limitEdges}
-                  onChange={(event) => setLimitEdges(Number(event.target.value))}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  {EDGE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {lastUpdated && (
-              <span className="ml-auto hidden text-sm text-gray-500 md:inline">
-                Last updated: {new Date(lastUpdated).toLocaleTimeString()}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={triggerRefresh}
-              className="ml-auto rounded-lg border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              Refresh Data
-            </button>
-          </div>
-        </div>
-      )}
 
       <main className="flex-1 overflow-hidden bg-black">
         <section className="h-full w-full">
@@ -240,9 +173,6 @@ export default function App() {
               <Dashboard />
             </div>
           )}
-          {view === "nodes" && <NodesPage />}
-          {view === "embeddings" && <EmbeddingsPage />}
-          {view === "settings" && <SettingsPage />}
           {view === "admin" && (
             <Suspense fallback={
               <div className="flex h-96 items-center justify-center">
@@ -255,48 +185,11 @@ export default function App() {
               <AdminDashboard />
             </Suspense>
           )}
-          {view === "graph" && (
+          {view === "network" && (
             <div className="absolute inset-0 top-20">
               <section className="relative h-full w-full bg-black">
                 <NeuralKnowledgeNetwork nodes={graph?.nodes} edges={graph?.edges} />
               </section>
-              <aside className="absolute top-6 right-6 w-80 max-h-[80vh] overflow-auto rounded-xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-2xl p-6">
-                <h2 className="mb-4 text-lg font-bold text-cyan-400">Knowledge Tags</h2>
-                {tags.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <div className="mb-3 h-12 w-12 rounded-full bg-white/5 flex items-center justify-center">
-                      <svg className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-400">No tags discovered yet</p>
-                  </div>
-                ) : (
-                  <ul className="space-y-3">
-                    {tags.map((tag) => (
-                      <li key={`${tag.tag_id}:${tag.node_id}`} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 hover:bg-cyan-500/10 transition-colors">
-                        <div className="text-xs font-medium text-cyan-400 mb-1">{tag.slug}</div>
-                        <div className="text-sm font-medium text-white mb-1">{tag.name}</div>
-                        <div className="text-xs text-gray-400">
-                          Node: {tag.node_id.slice(0, 8)}... • {Math.round(tag.confidence * 100)}%
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </aside>
-            </div>
-          )}
-          {view === "cinematic" && (
-            <div className="absolute inset-0 top-20 bg-black">
-              <Suspense fallback={
-                <div className="flex h-full flex-col items-center justify-center gap-4">
-                  <div className="h-16 w-16 animate-spin rounded-full border-4 border-purple-500 border-t-transparent shadow-lg shadow-purple-500/50"></div>
-                  <p className="text-lg text-purple-400 font-medium">Loading Cinematic Experience...</p>
-                </div>
-              }>
-                <CinematicScenes />
-              </Suspense>
             </div>
           )}
         </section>

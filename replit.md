@@ -23,7 +23,7 @@ A distributed worker system, coordinated via Redis, processes data in parallel. 
 An orchestrator monitors worker health and publishes fleet snapshots.
 
 ### Frontend Architecture
-The frontend is a React + TypeScript application with Vite and Tailwind CSS. It features a custom WebGL engine (QCEngine) with an HDR pipeline, particle systems, and cinematic cameras for immersive 3D visualization using Three.js and React Three Fiber. Web Workers are used for responsive force-directed layout calculations. The UI/UX has been transformed from a "dark high-tech" style to a modern, "production enterprise-grade" interface with a light gradient theme, professional branding, and improved accessibility.
+The frontend is a React + TypeScript application with Vite and Tailwind CSS. It features a unified cinematic knowledge network combining Three.js-based 3D graph visualization with HDR rendering, bloom effects, particles, and glassmorphism UI. The interface uses a deep black background with rust/orange HDR gradient accents, creating a "Google Earth meets ChatGPT" experience for exploring knowledge. Web Workers power responsive force-directed layout calculations in 3D space. Interactive node detail panels with glassmorphism allow users to click nodes and explore connections. The experience is unified into one primary view rather than separate graph and cinematic sections.
 
 ### Graph Data Model
 The system models `Nodes` (messages, glyphs, entities with embeddings), `Edges` (weighted relationships with confidence scores), `Tags` (hierarchical labeling), and `Coordinates` (3D positioning). It also supports a 4D Glyph system for time-dimensional visualization.
