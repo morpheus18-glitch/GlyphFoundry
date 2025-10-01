@@ -8,6 +8,7 @@ import { SpaceEnvironment } from "./SpaceEnvironment";
 import { NeonWispNode } from "./NeonWispNode";
 import { EnergyConnection, DataFlowBeam } from "./EnergyConnection";
 import { OrbitalControls } from "./OrbitalControls";
+import { NodeDetailPanel } from "./NodeDetailPanel";
 
 // --- Worker import (Vite) ---
 import ForceWorkerURL from "../workers/force3d.worker.ts?worker";
@@ -912,37 +913,31 @@ export default function NeuralKnowledgeNetwork({
             </div>
           </div>
 
-          {/* Selected details */}
+          {/* Selected details - HDR Rust Panel */}
           {selected && (
-            <div className="absolute right-3 top-3 z-20 w-[min(360px,95vw)] rounded-xl border border-[rgba(255,255,255,.08)] bg-[rgba(15,19,26,.8)] p-3 text-sm backdrop-blur">
-              <div className="mb-2 flex items-start gap-2">
-                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-400" />
-                <div className="font-semibold">{selected.label || selected.id}</div>
-                <button
-                  className="ml-auto rounded px-2 py-0.5 text-xs text-neutral-400 hover:text-neutral-100"
-                  onClick={clearSelection}
-                >
-                  Close
-                </button>
-              </div>
-              <div className="space-y-1 text-xs text-neutral-300">
-                <div><span className="text-neutral-500">ID:</span> {selected.id}</div>
-                {selected.kind && <div><span className="text-neutral-500">Type:</span> {selected.kind}</div>}
-                {typeof selected.degree === "number" && <div><span className="text-neutral-500">Degree:</span> {selected.degree}</div>}
-                {selected.summary && <div className="text-neutral-400">{selected.summary}</div>}
-              </div>
-              <div className="mt-3 border-t border-[rgba(255,255,255,.06)] pt-2">
-                <button
-                  className="rounded-lg border border-[rgba(255,255,255,.1)] bg-[rgba(255,255,255,.03)] px-3 py-1 text-xs text-neutral-200 hover:bg-[rgba(255,255,255,.06)]"
-                  onClick={() => {
-                    // TODO: call your backend to expand neighbors, then:
-                    // workerRef.current?.postMessage({ type: "UPDATE_GRAPH", nodes, edges })
-                  }}
-                >
-                  Expand knowledge
-                </button>
-              </div>
-            </div>
+            <NodeDetailPanel
+              node={selected}
+              connections={graph.edges
+                .filter((e) => e.source === selected.id || e.target === selected.id)
+                .map((e) => {
+                  const otherId = e.source === selected.id ? e.target : e.source;
+                  const other = graph.nodes.find((n) => n.id === otherId);
+                  return {
+                    id: otherId,
+                    label: other?.label || otherId,
+                    relationship: e.rel || "connected",
+                  };
+                })
+                .slice(0, 20)}
+              onClose={clearSelection}
+              onConnectionClick={(nodeId) => {
+                const node = graph.nodes.find((n) => n.id === nodeId);
+                if (node) {
+                  setSelected(node);
+                  pushRecent(node);
+                }
+              }}
+            />
           )}
 
           {/* Recent selections */}
