@@ -111,8 +111,7 @@ export default function App() {
   const handleNodeSelect = useCallback((nodeId: string) => {
     setSelectedNodeId(nodeId);
     setView("network");
-    triggerRefresh();
-  }, [triggerRefresh]);
+  }, []);
 
   const navItems: [ViewMode, string][] = [
     ["network", "Knowledge Network"],

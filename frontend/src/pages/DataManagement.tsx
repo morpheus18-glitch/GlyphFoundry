@@ -16,8 +16,9 @@ type FileUpload = {
   filename: string;
   file_type: string;
   mime_type: string;
-  size: number;
-  status: string;
+  size_bytes: number;
+  processing_status: string;
+  node_id: string | null;
   created_at: string;
 };
 
@@ -50,7 +51,7 @@ export function DataManagement({ onNodeSelect }: DataManagementProps) {
 
   const loadNodes = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/tenants/${DEFAULT_TENANT}/nodes?limit=100`);
+      const response = await fetch(`${API_BASE}/tenants/${DEFAULT_TENANT}/graph?limit_nodes=100&limit_edges=0&window_minutes=525600`);
       if (response.ok) {
         const data = await response.json();
         setNodes(data.nodes || []);
@@ -256,9 +257,12 @@ export function DataManagement({ onNodeSelect }: DataManagementProps) {
                   <p className="text-purple-500/50 text-sm">No files uploaded yet.</p>
                 )}
                 {files.map((file) => (
-                  <div
+                  <button
                     key={file.id}
-                    className="p-4 rounded-xl bg-black/40 border border-purple-500/10"
+                    onClick={() => file.node_id && handleNodeClick(file.node_id)}
+                    className={`w-full text-left p-4 rounded-xl bg-black/40 border border-purple-500/10 transition-all ${
+                      file.node_id ? 'hover:border-purple-400/50 hover:bg-purple-500/10 cursor-pointer group' : 'cursor-default'
+                    }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
@@ -267,26 +271,39 @@ export function DataManagement({ onNodeSelect }: DataManagementProps) {
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-purple-100 font-semibold truncate">{file.filename}</h3>
+                        <h3 className="text-purple-100 font-semibold truncate group-hover:text-purple-300">{file.filename}</h3>
                         <div className="flex items-center gap-3 mt-1 text-xs text-purple-500/70">
                           <span className="uppercase tracking-wider">{file.file_type}</span>
                           <span>•</span>
-                          <span>{(file.size / 1024).toFixed(1)} KB</span>
+                          <span>{(file.size_bytes / 1024).toFixed(1)} KB</span>
                           <span>•</span>
                           <span>{new Date(file.created_at).toLocaleDateString()}</span>
                         </div>
-                        <div className="mt-2">
+                        <div className="mt-2 flex items-center gap-2">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${
-                            file.status === 'processed' 
+                            file.processing_status === 'processed' 
                               ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
                               : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
                           }`}>
-                            {file.status}
+                            {file.processing_status}
                           </span>
+                          {file.node_id && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                              </svg>
+                              Linked
+                            </span>
+                          )}
                         </div>
                       </div>
+                      {file.node_id && (
+                        <svg className="w-5 h-5 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
