@@ -23,7 +23,27 @@ A distributed worker system, coordinated via Redis, processes data in parallel. 
 An orchestrator monitors worker health and publishes fleet snapshots.
 
 ### Frontend Architecture
-The frontend is a React + TypeScript application with Vite and Tailwind CSS. It features a unified cinematic knowledge network combining Three.js-based 3D graph visualization with HDR rendering, bloom effects, particles, and glassmorphism UI. The interface uses a deep black background with rust/orange HDR gradient accents, creating a "Google Earth meets ChatGPT" experience for exploring knowledge. Web Workers power responsive force-directed layout calculations in 3D space. Interactive node detail panels with glassmorphism allow users to click nodes and explore connections. The experience is unified into one primary view rather than separate graph and cinematic sections.
+The frontend is a React + TypeScript application with Vite and Tailwind CSS. It features a unified cinematic knowledge network combining Three.js-based 3D graph visualization with Hollywood-grade rendering quality. The interface uses a deep black background with cyan/purple/magenta HDR aesthetics, creating a "Google Earth meets ChatGPT" experience for exploring knowledge.
+
+#### Cinematic Rendering Pipeline
+The visualization employs a four-path cinematic rendering system (October 2025) delivering true 4K film-quality visuals:
+
+**Core Rendering Stack:**
+- **ACES Tone Mapping**: Film-industry standard color grading with 1.4 exposure
+- **Volumetric God Rays**: Light scattering from pulsing VolumetricSun (60 samples, 0.97 density, screen blend)
+- **Anamorphic Bloom**: Horizontal lens flares (2.8 intensity, 9 mipmap levels, large kernel)
+- **Depth of Field**: Cinematic selective focus with 4.5x bokeh scale for close-ups
+- **Chromatic Aberration**: Authentic lens color fringing effects
+- **Vignette**: Film-style edge darkening (0.6 darkness, 0.3 offset)
+- **8x MSAA**: High-quality anti-aliasing via multisampling
+
+**Four Adaptive Rendering Paths:**
+1. Close LOD with God Rays: Full suite (Bloom + GodRays + DOF + ChromaticAberration + Vignette + SMAA)
+2. Far LOD with God Rays: Performance mode (Bloom + GodRays + ChromaticAberration + Vignette + SMAA, no DOF)
+3. Close LOD Fallback: Traditional cinematic (Bloom + DOF + ChromaticAberration + Vignette + SMAA)
+4. Far LOD Fallback: Minimal overhead (Bloom + ChromaticAberration + Vignette + SMAA)
+
+The system automatically selects rendering paths based on camera distance and sun reference availability. Web Workers power responsive force-directed layout calculations in 3D space. Interactive node detail panels with glassmorphism allow users to click nodes and explore connections.
 
 ### Graph Data Model
 The system models `Nodes` (messages, glyphs, entities with embeddings), `Edges` (weighted relationships with confidence scores), `Tags` (hierarchical labeling), and `Coordinates` (3D positioning). It also supports a 4D Glyph system for time-dimensional visualization.
