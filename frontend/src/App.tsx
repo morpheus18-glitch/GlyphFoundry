@@ -1,6 +1,8 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import { DataManagement } from "./pages/DataManagement";
+import { UserSettings } from "./pages/UserSettings";
+import { Walkthrough } from "./components/Walkthrough";
 import NeuralKnowledgeNetwork from "./components/NeuralKnowledgeNetwork";
 
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
@@ -24,7 +26,7 @@ type GraphPayload = {
 
 type TagRow = { tag_id: string; slug: string; name: string; node_id: string; confidence: number };
 
-type ViewMode = "network" | "data" | "overview" | "admin";
+type ViewMode = "network" | "data" | "overview" | "settings" | "admin";
 
 const GRAPH_BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TAGS_BASE = import.meta.env.VITE_TAGS_BASE || "/tags";
@@ -117,6 +119,7 @@ export default function App() {
     ["network", "Knowledge Network"],
     ["data", "Data"],
     ["overview", "Overview"],
+    ["settings", "Settings"],
     ["admin", "Admin"],
   ];
 
@@ -206,6 +209,11 @@ export default function App() {
               <Dashboard />
             </div>
           )}
+          {view === "settings" && (
+            <div className="absolute inset-0 top-[140px] md:top-20 overflow-y-auto">
+              <UserSettings />
+            </div>
+          )}
           {view === "admin" && (
             <Suspense fallback={
               <div className="flex h-96 items-center justify-center">
@@ -231,6 +239,11 @@ export default function App() {
           )}
         </section>
       </main>
+      
+      <Walkthrough 
+        onChangeView={(newView) => setView(newView as ViewMode)}
+        onComplete={() => console.log('Walkthrough completed')}
+      />
     </div>
   );
 }

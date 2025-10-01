@@ -63,11 +63,20 @@ async def get_user_settings(
         settings = result.fetchone()
         db.commit()
     
+    # PostgreSQL JSONB fields are already deserialized by SQLAlchemy
+    preferences = settings[0] if settings[0] else {}
+    if isinstance(preferences, str):
+        preferences = json.loads(preferences)
+    
+    viz_settings = settings[3] if settings[3] else {}
+    if isinstance(viz_settings, str):
+        viz_settings = json.loads(viz_settings)
+    
     return {
-        "preferences": json.loads(settings[0]) if settings[0] else {},
+        "preferences": preferences,
         "theme": settings[1],
         "ai_instructions": settings[2],
-        "visualization_settings": json.loads(settings[3]) if settings[3] else {}
+        "visualization_settings": viz_settings
     }
 
 @router.put("/settings")
