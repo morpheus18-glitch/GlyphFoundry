@@ -3,12 +3,15 @@ import React, { useEffect, useMemo, useRef, useState, useCallback, Suspense } fr
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Environment } from "@react-three/drei";
-import { EffectComposer, Bloom, DepthOfField, SMAA, ChromaticAberration, Glitch } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, DepthOfField, SMAA, ChromaticAberration, Glitch, GodRays, Vignette } from "@react-three/postprocessing";
+import { BlendFunction } from "postprocessing";
 import { SpaceEnvironment } from "./SpaceEnvironment";
 import { NeonWispNode } from "./NeonWispNode";
 import { EnergyConnection, DataFlowBeam } from "./EnergyConnection";
 import { OrbitalControls } from "./OrbitalControls";
 import { NodeDetailPanel } from "./NodeDetailPanel";
+import { VolumetricSun } from "./VolumetricSun";
+import { CinematicEffects } from "./CinematicEffects";
 
 // --- Worker import (Vite) ---
 import ForceWorkerURL from "../workers/force3d.worker.ts?worker";
@@ -313,6 +316,9 @@ function GraphScene({
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  
+  // Sun ref for god rays in this scene
+  const graphSceneSunRef = useRef<THREE.Mesh>(null);
 
   useEffect(() => {
     camera.position.set(0, 0, 600);
@@ -334,6 +340,9 @@ function GraphScene({
 
   return (
     <>
+      {/* Volumetric Sun for God Rays */}
+      <VolumetricSun ref={graphSceneSunRef} />
+      
       <ambientLight intensity={0.4} />
       <directionalLight intensity={0.9} position={[600, 400, 300]} castShadow shadow-mapSize={[2048, 2048]} />
       <Environment preset="night" background={false} />
@@ -354,39 +363,8 @@ function GraphScene({
       {graph.nodes.length <= MAX_NODES_FOR_LINES && graph.edges.length > 0 && (
         <EdgeLines nodesById={nodesById} edges={graph.edges} opacity={usePointsLOD ? 0.18 : 0.28} />
       )}
-      {usePointsLOD ? (
-        <EffectComposer multisampling={8} enableNormalPass={false}>
-          <Bloom 
-            intensity={2.2} 
-            luminanceThreshold={0.1} 
-            luminanceSmoothing={0.95}
-            mipmapBlur={true}
-            radius={1.1}
-            levels={8}
-          />
-          <ChromaticAberration offset={[0.0015, 0.0015]} />
-          <SMAA />
-        </EffectComposer>
-      ) : (
-        <EffectComposer multisampling={8} enableNormalPass={false}>
-          <Bloom 
-            intensity={2.5} 
-            luminanceThreshold={0.1} 
-            luminanceSmoothing={0.95}
-            mipmapBlur={true}
-            radius={1.2}
-            levels={9}
-          />
-          <DepthOfField 
-            focusDistance={0.008} 
-            focalLength={0.015} 
-            bokehScale={4.0}
-            height={700}
-          />
-          <ChromaticAberration offset={[0.002, 0.002]} />
-          <SMAA />
-        </EffectComposer>
-      )}
+      {/* Cinematic Post-Processing with LOD-based DOF and God Rays */}
+      <CinematicEffects sunRef={graphSceneSunRef} useDOF={!usePointsLOD} />
 
       <OrbitalControls
         enableZoom={true}
@@ -630,6 +608,9 @@ export default function NeuralKnowledgeNetwork({
   const workerRef = useRef<Worker | null>(null);
   const posRef = useRef<Float32Array | null>(null);
   const idsRef = useRef<string[] | null>(null);
+  
+  // Sun ref for god rays effect
+  const sunRef = useRef<THREE.Mesh>(null);
 
   // Fetch/props + boot worker
   useEffect(() => {
@@ -810,6 +791,9 @@ export default function NeuralKnowledgeNetwork({
               {/* Space Environment with HDR starfields and nebulae */}
               <SpaceEnvironment />
               
+              {/* Volumetric Sun for God Rays */}
+              <VolumetricSun ref={sunRef} />
+              
               {/* Enhanced lighting for constellation effect */}
               <ambientLight intensity={0.15} color="#4a0080" />
               <pointLight position={[0, 0, 0]} intensity={2} color="#ffffff" distance={1000} decay={2} />
@@ -865,25 +849,8 @@ export default function NeuralKnowledgeNetwork({
                 );
               })}
               
-              {/* Cinematic HDR Post-Processing for 4K */}
-              <EffectComposer enableNormalPass={false} multisampling={8}>
-                <Bloom 
-                  intensity={2.5} 
-                  luminanceThreshold={0.1} 
-                  luminanceSmoothing={0.95}
-                  mipmapBlur={true}
-                  radius={1.2}
-                  levels={9}
-                />
-                <DepthOfField 
-                  focusDistance={0.008} 
-                  focalLength={0.015} 
-                  bokehScale={4.0}
-                  height={700}
-                />
-                <ChromaticAberration offset={[0.002, 0.002]} />
-                <SMAA />
-              </EffectComposer>
+              {/* Cinematic 4K Post-Processing: ACES Tone Mapping, Volumetric Lighting, Anamorphic Bloom */}
+              <CinematicEffects sunRef={sunRef} useDOF={true} />
             </Suspense>
           </Canvas>
 
