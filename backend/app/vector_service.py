@@ -7,7 +7,6 @@ try:
 except ImportError:
     SentenceTransformer = None
 import numpy as np
-from .models import Node, Edge
 from .settings import settings
 
 class VectorService:

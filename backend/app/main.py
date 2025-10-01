@@ -91,8 +91,9 @@ if api_router is not None:
 try:
     from .api.knowledge_graph import router as kg_router
     app.include_router(kg_router)
-except ImportError:
-    pass
+    logging.info("Knowledge Graph API loaded")
+except ImportError as e:
+    logging.warning(f"Knowledge Graph API not available: {e}")
 
 # Glyph 4D visualization API
 try:

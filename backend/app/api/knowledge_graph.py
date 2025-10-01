@@ -77,6 +77,23 @@ async def create_node(
 ):
     """Create a new knowledge node with vector embedding."""
     
+    # Validate and normalize tenant_id - check if it exists (by name or UUID)
+    try:
+        # Try as UUID first
+        tenant_check = db.execute(text("SELECT id FROM tenants WHERE id::text = :tenant_id LIMIT 1"), 
+                                   {'tenant_id': tenant_id}).fetchone()
+    except Exception:
+        tenant_check = None
+    
+    if not tenant_check:
+        # Try as name
+        tenant_check = db.execute(text("SELECT id FROM tenants WHERE name = :tenant_name LIMIT 1"), 
+                                   {'tenant_name': tenant_id}).fetchone()
+    
+    if not tenant_check:
+        raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' not found")
+    actual_tenant_id = str(tenant_check.id)
+    
     # Generate embedding if content provided
     embedding = None
     if node.content:
@@ -88,25 +105,26 @@ async def create_node(
     embedding_str = f"[{','.join(map(str, embedding))}]" if embedding else None
     
     # Create node with all required fields populated
+    import json
     sql = text("""
         INSERT INTO nodes_v2 (
             tenant_id, kind, name, summary, content, metadata,
             embedding_384, pos_x, pos_y, pos_z, color, size, 
             opacity, glow_intensity, importance_score, connection_strength
         ) VALUES (
-            :tenant_id, :kind::node_kind_enum, :name, :summary, :content, :metadata::jsonb,
-            :embedding_384::vector, :pos_x, :pos_y, :pos_z, :color, :size,
+            :tenant_id, CAST(:kind AS node_kind_enum), :name, :summary, :content, CAST(:metadata AS jsonb),
+            CAST(:embedding_384 AS vector), :pos_x, :pos_y, :pos_z, :color, :size,
             :opacity, :glow_intensity, :importance_score, :connection_strength
         ) RETURNING *
     """)
     
     result = db.execute(sql, {
-        'tenant_id': tenant_id,
+        'tenant_id': actual_tenant_id,
         'kind': node.kind,
         'name': node.name,
         'summary': node.summary,
         'content': node.content,
-        'metadata': node.metadata or {},
+        'metadata': json.dumps(node.metadata or {}),
         'embedding_384': embedding_str,
         'pos_x': 0.0,  # Default to origin, will be positioned by layout algorithm
         'pos_y': 0.0,
@@ -122,13 +140,13 @@ async def create_node(
     new_node = result.fetchone()
     db.commit()
     
-    # Generate autonomous connections
-    if embedding:
-        vector_service.create_autonomous_connections(
-            db, tenant_id, str(new_node.id), 
-            similarity_threshold=0.75, max_connections=3
-        )
-        vector_service.update_node_importance(db, tenant_id, str(new_node.id))
+    # TODO: Re-enable autonomous connections after refactoring to use raw SQL
+    # if embedding:
+    #     vector_service.create_autonomous_connections(
+    #         db, actual_tenant_id, str(new_node.id), 
+    #         similarity_threshold=0.75, max_connections=3
+    #     )
+    #     vector_service.update_node_importance(db, actual_tenant_id, str(new_node.id))
     
     return NodeResponse(
         id=str(new_node.id),
