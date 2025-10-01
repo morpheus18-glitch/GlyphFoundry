@@ -176,6 +176,23 @@ async def get_knowledge_graph(
 ):
     """Get the knowledge graph for 3D visualization with spatial positioning."""
     
+    # Validate and normalize tenant_id - check if it exists (by name or UUID)
+    try:
+        # Try as UUID first
+        tenant_check = db.execute(text("SELECT id FROM tenants WHERE id::text = :tenant_id LIMIT 1"), 
+                                   {'tenant_id': tenant_id}).fetchone()
+    except Exception:
+        tenant_check = None
+    
+    if not tenant_check:
+        # Try as name
+        tenant_check = db.execute(text("SELECT id FROM tenants WHERE name = :tenant_name LIMIT 1"), 
+                                   {'tenant_name': tenant_id}).fetchone()
+    
+    if not tenant_check:
+        raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' not found")
+    actual_tenant_id = str(tenant_check.id)
+    
     # Enhanced graph query with 3D positioning
     sql = text("""
         WITH recent_edges AS (
@@ -259,7 +276,7 @@ async def get_knowledge_graph(
     """)
     
     result = db.execute(sql, {
-        'tenant_id': tenant_id,
+        'tenant_id': actual_tenant_id,
         'limit_nodes': limit_nodes,
         'limit_edges': limit_edges,
         'window_minutes': window_minutes

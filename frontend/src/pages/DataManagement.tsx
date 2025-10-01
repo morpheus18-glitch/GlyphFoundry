@@ -24,7 +24,7 @@ type FileUpload = {
 
 const API_BASE = '/api/v1/knowledge';
 const FILES_API = '/files';
-const DEFAULT_TENANT = 'default-tenant';
+const DEFAULT_TENANT = '00000000-0000-0000-0000-000000000000'; // Default Tenant UUID
 
 interface DataManagementProps {
   onNodeSelect?: (nodeId: string) => void;
