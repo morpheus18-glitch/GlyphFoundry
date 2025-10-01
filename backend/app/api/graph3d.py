@@ -10,28 +10,32 @@ router = APIRouter()
 @router.get("/graph3d/data")
 async def get_graph_data(
     window_minutes: int = Query(4320, description="Time window in minutes"),
-    limit_nodes: int = Query(300, description="Max nodes to return"),
-    limit_edges: int = Query(1500, description="Max edges to return"),
+    limit_nodes: int = Query(1500, description="Max nodes to return"),
+    limit_edges: int = Query(5000, description="Max edges to return"),
     db: Session = Depends(get_db)
 ):
     """Get graph data for 3D visualization."""
-    tenant_id = "00000000-0000-0000-0000-000000000001"
+    tenant_id = "00000000-0000-0000-0000-000000000000"
     
     nodes_sql = text("""
         SELECT 
             id::text,
-            kind,
+            kind::text,
             COALESCE(name, 'Node') as label,
             COALESCE(summary, '') as summary,
+            COALESCE(pos_x, 0.0) as x,
+            COALESCE(pos_y, 0.0) as y,
+            COALESCE(pos_z, 0.0) as z,
+            COALESCE(size, 1.0) as size,
+            COALESCE(importance_score, 0.5) as importance,
             COALESCE(
-                (SELECT COUNT(*) FROM edges WHERE src_id = nodes.id OR dst_id = nodes.id),
+                (SELECT COUNT(*) FROM edges_v2 WHERE src_id = nodes_v2.id OR dst_id = nodes_v2.id),
                 0
             ) as degree,
             EXTRACT(EPOCH FROM created_at)::bigint as ts
-        FROM nodes
+        FROM nodes_v2
         WHERE tenant_id = :tenant_id
-        AND created_at >= NOW() - (:window_minutes || ' minutes')::interval
-        ORDER BY created_at DESC
+        ORDER BY importance_score DESC, created_at DESC
         LIMIT :limit_nodes
     """)
     
@@ -40,11 +44,10 @@ async def get_graph_data(
             src_id::text as source,
             dst_id::text as target,
             COALESCE(relation_name, edge_type::text) as rel,
-            weight,
+            COALESCE(weight, 0.5) as weight,
             EXTRACT(EPOCH FROM created_at)::bigint as ts
-        FROM edges
+        FROM edges_v2
         WHERE tenant_id = :tenant_id
-        AND created_at >= NOW() - (:window_minutes || ' minutes')::interval
         ORDER BY weight DESC
         LIMIT :limit_edges
     """)
@@ -67,6 +70,11 @@ async def get_graph_data(
             'kind': row.kind,
             'label': row.label,
             'summary': row.summary,
+            'x': row.x,
+            'y': row.y,
+            'z': row.z,
+            'size': row.size,
+            'importance': row.importance,
             'degree': row.degree,
             'ts': row.ts
         }
