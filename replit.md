@@ -29,8 +29,33 @@ The frontend is a React + TypeScript application with Vite and Tailwind CSS. It 
 
 Users can toggle between renderers in the network view. The interface uses a deep black background with cyan/purple/magenta HDR aesthetics, creating a "Google Earth meets ChatGPT" experience for exploring knowledge.
 
-#### Cinematic Rendering Pipeline
-The visualization employs a four-path cinematic rendering system (October 2025) delivering true 4K film-quality visuals:
+#### G6 5.0 WebGL Renderer (October 2025 - Phase 1 Complete)
+The platform features a high-performance G6 5.0 WebGL renderer as the primary knowledge graph visualization engine:
+
+**Implementation Status:** ✅ Production Ready (Task 1 Complete)
+- **GPU-Accelerated Rendering**: Automatic WebGL detection with Canvas2D fallback for maximum compatibility
+- **Birth Animation System**: Organic node growth animations for both initial load and real-time polling updates
+- **Force-Directed Layout**: Built-in physics-based positioning with configurable parameters
+- **Real-Time Data Sync**: 3-second polling with automatic new node detection and animation
+- **Click Interactions**: Node selection with detail panel integration
+- **Performance Stats**: Live renderer type and node/edge count overlay
+
+**Technical Architecture:**
+- Factory pattern for renderer initialization: `() => new WebGLRenderer()` for WebGL, `() => new Renderer()` for Canvas2D
+- API endpoint: `/graph3d/data` with configurable time windows and node/edge limits
+- State management via `changeData()` for graph mutations (never `updateData()`)
+- Birth timestamp tracking with `Map<string, number>` for animation scheduling
+- Seen node IDs with `Set<string>` for new node detection during polling
+- Responsive resize handling with separate width/height parameters
+
+**Next Phase Enhancements (Pending):**
+- Rust WebAssembly physics engine for Barnes-Hut acceleration
+- Adaptive rendering with progressive enhancement
+- Mobile touch controls and gesture recognition
+- Viewport culling for 1M+ node support
+
+#### Three.js Cinematic Renderer (Legacy)
+The visualization also includes a Hollywood-grade 3D renderer with volumetric effects:
 
 **Core Rendering Stack:**
 - **ACES Tone Mapping**: Film-industry standard color grading with 1.4 exposure
