@@ -3,6 +3,9 @@ import { Graph } from '@antv/g6';
 import { Renderer as WebGLRenderer } from '@antv/g-webgl';
 import { Renderer as CanvasRenderer } from '@antv/g-canvas';
 import { useGraphGestures } from '../hooks/useGraphGestures';
+import { usePerformanceMonitor, type QualityTier } from '../hooks/usePerformanceMonitor';
+import { getConfigForTier } from '../config/renderingTiers';
+import { QualityTierIndicator } from './QualityTierIndicator';
 
 // Types matching backend API
 interface ApiNode {
@@ -76,6 +79,16 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const animationFrame = useRef<number | null>(null);
   const latestDataRef = useRef<GraphPayload | null>(null);
 
+  // Adaptive rendering system
+  const { metrics, currentTier, setTier, isMobile } = usePerformanceMonitor({
+    targetFps: 60,
+    sampleSize: 60,
+    stabilityThreshold: 0.1,
+    onTierChange: (tier) => {
+      console.log(`🎨 Quality tier changed: ${tier}`);
+    }
+  });
+
   // Mobile gesture controls
   useGraphGestures(containerRef, graphRef, {
     onNodeLongPress: (nodeId) => {
@@ -95,26 +108,30 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     }
   });
 
-  // Fetch graph data
+  // Fetch graph data with adaptive node/edge limits based on tier
   const fetchGraphData = useCallback(async (): Promise<GraphPayload> => {
     const BASE = import.meta.env.VITE_GRAPH_BASE || '/graph3d';
     const TOKEN = import.meta.env.VITE_GRAPH_TOKEN || '';
+    const config = getConfigForTier(currentTier);
     
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
 
     try {
-      const response = await fetch(`${BASE}/data?window_minutes=525600&limit_nodes=1000&limit_edges=3000`, {
-        headers
-      });
+      const response = await fetch(
+        `${BASE}/data?window_minutes=525600&limit_nodes=${config.maxNodes}&limit_edges=${config.maxEdges}`,
+        { headers }
+      );
       
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     } catch (err) {
       console.warn('API fetch failed, using sample data:', err);
-      return makeSampleGraph(600, 1200);
+      const sampleNodes = Math.min(config.maxNodes, 600);
+      const sampleEdges = Math.min(config.maxEdges, 1200);
+      return makeSampleGraph(sampleNodes, sampleEdges);
     }
-  }, []);
+  }, [currentTier]);
 
   // Create sample graph for fallback
   const makeSampleGraph = (n = 600, e = 1200): GraphPayload => {
@@ -437,6 +454,16 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
             <div className="text-white/80 text-sm">{error}</div>
           </div>
         </div>
+      )}
+
+      {/* Quality Tier Indicator */}
+      {!loading && !error && (
+        <QualityTierIndicator
+          tier={currentTier}
+          metrics={metrics}
+          onTierChange={setTier}
+          showDetails={true}
+        />
       )}
     </div>
   );

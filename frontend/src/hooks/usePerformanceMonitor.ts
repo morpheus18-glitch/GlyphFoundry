@@ -39,7 +39,7 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
   
   const frameTimesRef = useRef<number[]>([]);
   const lastFrameTimeRef = useRef<number>(performance.now());
-  const rafIdRef = useRef<number>();
+  const rafIdRef = useRef<number | undefined>(undefined);
   const consecutiveDropsRef = useRef<number>(0);
   const tierChangeTimerRef = useRef<number>(0);
 
