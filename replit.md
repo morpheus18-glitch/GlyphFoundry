@@ -23,7 +23,11 @@ A distributed worker system, coordinated via Redis, processes data in parallel. 
 An orchestrator monitors worker health and publishes fleet snapshots.
 
 ### Frontend Architecture
-The frontend is a React + TypeScript application with Vite and Tailwind CSS. It features a unified cinematic knowledge network combining Three.js-based 3D graph visualization with Hollywood-grade rendering quality. The interface uses a deep black background with cyan/purple/magenta HDR aesthetics, creating a "Google Earth meets ChatGPT" experience for exploring knowledge.
+The frontend is a React + TypeScript application with Vite and Tailwind CSS. It features dual rendering engines for knowledge graph visualization:
+- **G6 5.0 WebGL Renderer** (October 2025): High-performance graph visualization engine with GPU acceleration, optimized for large knowledge graphs (10k-100k nodes). Features automatic GPU detection with Canvas2D fallback, force-directed layouts, birth animations, and real-time data polling.
+- **Three.js Cinematic Renderer**: Hollywood-grade 3D visualization with volumetric effects, bloom, god rays, and film-quality post-processing.
+
+Users can toggle between renderers in the network view. The interface uses a deep black background with cyan/purple/magenta HDR aesthetics, creating a "Google Earth meets ChatGPT" experience for exploring knowledge.
 
 #### Cinematic Rendering Pipeline
 The visualization employs a four-path cinematic rendering system (October 2025) delivering true 4K film-quality visuals:

@@ -4,6 +4,7 @@ import { DataManagement } from "./pages/DataManagement";
 import { UserSettings } from "./pages/UserSettings";
 import { Walkthrough } from "./components/Walkthrough";
 import NeuralKnowledgeNetwork from "./components/NeuralKnowledgeNetwork";
+import { G6GraphRenderer } from "./components/G6GraphRenderer";
 
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
@@ -27,6 +28,7 @@ type GraphPayload = {
 type TagRow = { tag_id: string; slug: string; name: string; node_id: string; confidence: number };
 
 type ViewMode = "network" | "data" | "overview" | "settings" | "admin";
+type RendererMode = "threejs" | "g6";
 
 const GRAPH_BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TAGS_BASE = import.meta.env.VITE_TAGS_BASE || "/tags";
@@ -48,6 +50,7 @@ export default function App() {
   const [refreshToken, setRefreshToken] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [renderer, setRenderer] = useState<RendererMode>("g6");
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -231,11 +234,45 @@ export default function App() {
           {view === "network" && (
             <div className="absolute inset-0 top-[140px] md:top-20">
               <section className="relative h-full w-full bg-black">
-                <NeuralKnowledgeNetwork 
-                  nodes={graph?.nodes} 
-                  edges={graph?.edges}
-                  selectedNodeId={selectedNodeId}
-                />
+                {/* Renderer toggle */}
+                <div className="absolute top-4 right-4 z-50 flex gap-2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-lg border border-cyan-500/30">
+                  <button
+                    onClick={() => setRenderer("g6")}
+                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                      renderer === "g6"
+                        ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/50"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-cyan-300"
+                    }`}
+                  >
+                    ⚡ G6 WebGL
+                  </button>
+                  <button
+                    onClick={() => setRenderer("threejs")}
+                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                      renderer === "threejs"
+                        ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/50"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-cyan-300"
+                    }`}
+                  >
+                    🎬 Three.js
+                  </button>
+                </div>
+
+                {/* Conditional renderer */}
+                {renderer === "g6" ? (
+                  <G6GraphRenderer 
+                    tenantId="default-tenant"
+                    onNodeSelect={(node) => {
+                      setSelectedNodeId(node.id);
+                    }}
+                  />
+                ) : (
+                  <NeuralKnowledgeNetwork 
+                    nodes={graph?.nodes} 
+                    edges={graph?.edges}
+                    selectedNodeId={selectedNodeId}
+                  />
+                )}
               </section>
             </div>
           )}
