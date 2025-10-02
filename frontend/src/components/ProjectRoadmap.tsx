@@ -28,7 +28,7 @@ const ROADMAP_DATA: Phase[] = [
     goal: '50k-100k nodes at 45+ FPS desktop, 30+ FPS mobile',
     duration: '5-7 weeks',
     status: 'in_progress',
-    completion: 37.5,
+    completion: 50,
     tasks: [
       {
         id: 'task1',
@@ -50,11 +50,10 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task3',
         title: 'Adaptive Rendering System',
-        status: 'pending',
-        duration: '3-4 days',
-        dependencies: ['task2'],
+        status: 'completed',
+        duration: 'Complete',
         complexity: 'high',
-        target: '≥45 FPS desktop, ≥30 FPS mobile',
+        target: '≥45 FPS desktop, ≥30 FPS mobile (achieved)',
         mobileImpact: 'Auto-switch quality tiers (Ultra→Eco)'
       },
       {

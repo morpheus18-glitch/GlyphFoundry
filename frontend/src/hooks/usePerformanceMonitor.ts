@@ -35,7 +35,8 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
     isStable: true
   });
 
-  const [currentTier, setCurrentTier] = useState<QualityTier>('high');
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const [currentTier, setCurrentTier] = useState<QualityTier>(isMobile ? 'standard' : 'high');
   
   const frameTimesRef = useRef<number[]>([]);
   const lastFrameTimeRef = useRef<number>(performance.now());
@@ -43,14 +44,13 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
   const consecutiveDropsRef = useRef<number>(0);
   const tierChangeTimerRef = useRef<number>(0);
 
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const targetFpsThreshold = isMobile ? 30 : 45;
 
   const determineTier = useCallback((avgFps: number): QualityTier => {
     if (isMobile) {
       if (avgFps >= 50) return 'high';
-      if (avgFps >= 40) return 'standard';
-      if (avgFps >= 25) return 'eco';
+      if (avgFps >= 30) return 'standard';
+      if (avgFps >= 20) return 'eco';
       return 'eco';
     } else {
       if (avgFps >= 55) return 'ultra';
@@ -90,40 +90,35 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
       isStable
     });
 
-    if (avgFps < targetFpsThreshold - 5) {
-      consecutiveDropsRef.current++;
-    } else {
-      consecutiveDropsRef.current = 0;
-    }
-
     const now2 = Date.now();
-    if (consecutiveDropsRef.current >= 30 && now2 - tierChangeTimerRef.current > 2000) {
-      const newTier = determineTier(avgFps);
-      if (newTier !== currentTier) {
-        const tierOrder: QualityTier[] = ['ultra', 'high', 'standard', 'eco'];
-        const currentIndex = tierOrder.indexOf(currentTier);
-        const newIndex = tierOrder.indexOf(newTier);
+    const newTier = determineTier(avgFps);
+    
+    if (newTier !== currentTier) {
+      const tierOrder: QualityTier[] = ['ultra', 'high', 'standard', 'eco'];
+      const currentIndex = tierOrder.indexOf(currentTier);
+      const newIndex = tierOrder.indexOf(newTier);
+      
+      if (newIndex > currentIndex) {
+        if (avgFps < targetFpsThreshold) {
+          consecutiveDropsRef.current++;
+        } else {
+          consecutiveDropsRef.current = 0;
+        }
         
-        if (newIndex > currentIndex) {
+        if (consecutiveDropsRef.current >= 20 && now2 - tierChangeTimerRef.current > 2000) {
           setCurrentTier(newTier);
           tierChangeTimerRef.current = now2;
           consecutiveDropsRef.current = 0;
           onTierChange?.(newTier);
         }
+      } else if (newIndex < currentIndex && isStable && now2 - tierChangeTimerRef.current > 5000) {
+        setCurrentTier(newTier);
+        tierChangeTimerRef.current = now2;
+        consecutiveDropsRef.current = 0;
+        onTierChange?.(newTier);
       }
-    } else if (avgFps > targetFpsThreshold + 10 && isStable && now2 - tierChangeTimerRef.current > 5000) {
-      const newTier = determineTier(avgFps);
-      if (newTier !== currentTier) {
-        const tierOrder: QualityTier[] = ['ultra', 'high', 'standard', 'eco'];
-        const currentIndex = tierOrder.indexOf(currentTier);
-        const newIndex = tierOrder.indexOf(newTier);
-        
-        if (newIndex < currentIndex) {
-          setCurrentTier(newTier);
-          tierChangeTimerRef.current = now2;
-          onTierChange?.(newTier);
-        }
-      }
+    } else {
+      consecutiveDropsRef.current = 0;
     }
 
     lastFrameTimeRef.current = now;
