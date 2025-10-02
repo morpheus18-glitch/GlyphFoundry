@@ -5,6 +5,7 @@ import { UserSettings } from "./pages/UserSettings";
 import { Walkthrough } from "./components/Walkthrough";
 import NeuralKnowledgeNetwork from "./components/NeuralKnowledgeNetwork";
 import { G6GraphRenderer } from "./components/G6GraphRenderer";
+import { ProjectRoadmap } from "./components/ProjectRoadmap";
 
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
@@ -27,7 +28,7 @@ type GraphPayload = {
 
 type TagRow = { tag_id: string; slug: string; name: string; node_id: string; confidence: number };
 
-type ViewMode = "network" | "data" | "overview" | "settings" | "admin";
+type ViewMode = "network" | "data" | "overview" | "settings" | "admin" | "roadmap";
 type RendererMode = "threejs" | "g6";
 
 const GRAPH_BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
@@ -124,6 +125,7 @@ export default function App() {
     ["network", "Knowledge Network"],
     ["data", "Data"],
     ["overview", "Overview"],
+    ["roadmap", "Roadmap"],
     ["settings", "Settings"],
     ["admin", "Admin"],
   ];
@@ -217,6 +219,11 @@ export default function App() {
           {view === "settings" && (
             <div className="absolute inset-0 top-[140px] md:top-20 overflow-y-auto">
               <UserSettings />
+            </div>
+          )}
+          {view === "roadmap" && (
+            <div className="absolute inset-0 top-[140px] md:top-20">
+              <ProjectRoadmap />
             </div>
           )}
           {view === "admin" && (
