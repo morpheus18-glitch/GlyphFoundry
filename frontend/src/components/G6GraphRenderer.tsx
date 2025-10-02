@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Graph } from '@antv/g6';
 import { Renderer as WebGLRenderer } from '@antv/g-webgl';
 import { Renderer as CanvasRenderer } from '@antv/g-canvas';
+import { useGraphGestures } from '../hooks/useGraphGestures';
 
 // Types matching backend API
 interface ApiNode {
@@ -74,6 +75,25 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const hasGPU = useRef(detectGPU());
   const animationFrame = useRef<number | null>(null);
   const latestDataRef = useRef<GraphPayload | null>(null);
+
+  // Mobile gesture controls
+  useGraphGestures(containerRef, graphRef, {
+    onNodeLongPress: (nodeId) => {
+      // Long press detected on node
+      if (graphRef.current && onNodeSelect && latestDataRef.current) {
+        const node = latestDataRef.current.nodes.find(n => n.id === nodeId);
+        if (node) {
+          onNodeSelect(node);
+        }
+      }
+    },
+    onDoubleTap: () => {
+      // Double tap to fit view
+      if (graphRef.current && 'fitView' in graphRef.current) {
+        (graphRef.current as any).fitView();
+      }
+    }
+  });
 
   // Fetch graph data
   const fetchGraphData = useCallback(async (): Promise<GraphPayload> => {
