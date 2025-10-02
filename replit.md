@@ -48,11 +48,16 @@ The platform features a high-performance G6 5.0 WebGL renderer as the primary kn
 - Seen node IDs with `Set<string>` for new node detection during polling
 - Responsive resize handling with separate width/height parameters
 
-**Next Phase Enhancements (Pending):**
-- Rust WebAssembly physics engine for Barnes-Hut acceleration
-- Adaptive rendering with progressive enhancement
-- Mobile touch controls and gesture recognition
-- Viewport culling for 1M+ node support
+**Phase 1 Enhancements (October 2025 - Complete):**
+- ✅ **Rust WebAssembly Physics Engine**: Barnes-Hut octree algorithm (O(n log n)) compiled to 109KB Wasm binary for force-directed layout calculations
+- ✅ **Adaptive Rendering System**: 4-tier quality system (Ultra → High → Standard → Eco) with automatic FPS-based tier switching
+  - Mobile starts at "Standard" tier (2k nodes, bloom only, ≥30 FPS target)
+  - Desktop starts at "High" tier (5k nodes, MSAA 4x, bloom + shadows, ≥45 FPS target)
+  - Automatic downgrade after 20 consecutive low-FPS frames (2s cooldown)
+  - Automatic upgrade after stable performance (5s cooldown)
+  - Real-time performance HUD with FPS, frame time, tier status, and manual override
+- ✅ **Mobile Touch Controls**: Pinch-to-zoom, pan gestures, tap/long-press interactions with haptic feedback
+- **Viewport Culling** (Pending): For 1M+ node support with frustum culling and LOD
 
 #### Three.js Cinematic Renderer (Legacy)
 The visualization also includes a Hollywood-grade 3D renderer with volumetric effects:

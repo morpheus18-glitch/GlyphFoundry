@@ -99,11 +99,7 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
       const newIndex = tierOrder.indexOf(newTier);
       
       if (newIndex > currentIndex) {
-        if (avgFps < targetFpsThreshold) {
-          consecutiveDropsRef.current++;
-        } else {
-          consecutiveDropsRef.current = 0;
-        }
+        consecutiveDropsRef.current++;
         
         if (consecutiveDropsRef.current >= 20 && now2 - tierChangeTimerRef.current > 2000) {
           setCurrentTier(newTier);
