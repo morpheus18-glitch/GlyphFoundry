@@ -26,6 +26,7 @@
   ],
   "license": "UNLICENSED",
   "dependencies": {
+    "@antv/g6": "^5.0.49",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "react": "^19.1.1",
