@@ -5,7 +5,7 @@ integrations = ["python_log_in_with_replit:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["arrow-cpp", "cargo", "glibcLocales", "libiconv", "libxcrypt", "openssl", "pkg-config", "postgresql", "rustc", "opensshWithKerberos"]
+packages = ["arrow-cpp", "cargo", "glibcLocales", "libiconv", "libxcrypt", "openssl", "pkg-config", "postgresql", "rustc", "opensshWithKerberos", "llvmPackages.bintools"]
 
 [workflows]
 runButton = "Project"
