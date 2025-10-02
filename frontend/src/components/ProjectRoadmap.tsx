@@ -28,7 +28,7 @@ const ROADMAP_DATA: Phase[] = [
     goal: '50k-100k nodes at 45+ FPS desktop, 30+ FPS mobile',
     duration: '5-7 weeks',
     status: 'in_progress',
-    completion: 25,
+    completion: 37.5,
     tasks: [
       {
         id: 'task1',
@@ -41,10 +41,10 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task2',
         title: 'Rust Wasm Physics Engine',
-        status: 'blocked',
-        duration: '5-7 days (90% done, deferred)',
+        status: 'completed',
+        duration: 'Complete',
         complexity: 'critical',
-        target: '<30ms layout for 50k nodes',
+        target: '<30ms layout for 50k nodes (Barnes-Hut O(n log n))',
         mobileImpact: 'Memory cap + JS fallback for iOS Safari'
       },
       {

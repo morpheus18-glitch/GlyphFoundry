@@ -104,7 +104,7 @@ impl QuadTreeNode {
         } else if self.children.is_none() {
             // Need to subdivide
             let subdivisions = self.bounds.subdivide();
-            let mut children = Box::new([
+            let children = Box::new([
                 QuadTreeNode::new(subdivisions[0]),
                 QuadTreeNode::new(subdivisions[1]),
                 QuadTreeNode::new(subdivisions[2]),
@@ -119,7 +119,7 @@ impl QuadTreeNode {
             let existing_ids = std::mem::take(&mut self.node_ids);
             self.children = Some(children);
 
-            for &id in &existing_ids {
+            for &_id in &existing_ids {
                 // Would need node data here, simplified for this implementation
             }
 
@@ -341,6 +341,5 @@ impl PhysicsEngine {
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    #[cfg(feature = "console_error_panic_hook")]
-    console_error_panic_hook::set_once();
+    // Future: add console_error_panic_hook for better error messages
 }
