@@ -28,7 +28,7 @@ const ROADMAP_DATA: Phase[] = [
     goal: '50k-100k nodes at 45+ FPS desktop, 30+ FPS mobile',
     duration: '5-7 weeks',
     status: 'in_progress',
-    completion: 12.5,
+    completion: 25,
     tasks: [
       {
         id: 'task1',
@@ -41,8 +41,8 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task2',
         title: 'Rust Wasm Physics Engine',
-        status: 'pending',
-        duration: '5-7 days',
+        status: 'blocked',
+        duration: '5-7 days (90% done, deferred)',
         complexity: 'critical',
         target: '<30ms layout for 50k nodes',
         mobileImpact: 'Memory cap + JS fallback for iOS Safari'
@@ -60,8 +60,8 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task4',
         title: 'Mobile Touch Controls',
-        status: 'pending',
-        duration: '3 days',
+        status: 'completed',
+        duration: 'Complete',
         complexity: 'medium',
         target: '60 FPS gesture budget',
         mobileImpact: 'Pinch-zoom, pan, rotate, haptics'

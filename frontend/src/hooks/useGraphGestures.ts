@@ -15,12 +15,12 @@ interface GestureState {
 }
 
 interface GraphInstance {
-  zoom(ratio: number, center?: { x: number; y: number }): void;
-  translate(dx: number, dy: number): void;
+  zoomBy?(ratio: number, animation?: any, origin?: { x: number; y: number }): Promise<void>;
+  translateBy?(offset: { x: number; y: number }, animation?: any): Promise<void>;
   rotate?(angle: number): void;
-  fitView?(): void;
+  fitView?(padding?: any, animation?: any): Promise<void>;
   getZoom?(): number;
-  getItemByPoint?(x: number, y: number): { id: string } | null;
+  getElementByPoint?(x: number, y: number): any;
 }
 
 interface GestureCallbacks {
@@ -106,7 +106,7 @@ export const useGraphGestures = (
     }
 
     // Apply velocity (already in graph coordinates from pan handler)
-    graphRef.current.translate(state.velocity.x, state.velocity.y);
+    graphRef.current.translateBy?.({ x: state.velocity.x, y: state.velocity.y }, false);
     
     state.velocity.x *= INERTIA_DECAY;
     state.velocity.y *= INERTIA_DECAY;
@@ -170,8 +170,8 @@ export const useGraphGestures = (
             const canvasY = touchY - rect.top;
             
             // Hit-test to find node at touch position
-            const item = graphRef.current.getItemByPoint?.(canvasX, canvasY);
-            if (item && item.id) {
+            const item = graphRef.current.getElementByPoint?.(canvasX, canvasY);
+            if (item?.id) {
               vibrate([50, 100, 50]); // Pattern: vibrate 50ms, pause 100ms, vibrate 50ms
               callbacks?.onNodeLongPress?.(item.id);
             }
@@ -231,7 +231,7 @@ export const useGraphGestures = (
           const graphDy = frameDy / zoom;
 
           // Translate the graph
-          graphRef.current.translate(graphDx, graphDy);
+          graphRef.current.translateBy?.({ x: graphDx, y: graphDy }, false);
 
           // Calculate velocity for inertia (in graph coordinates)
           state.velocity = {
@@ -267,7 +267,7 @@ export const useGraphGestures = (
             const canvasX = currentCenter.x - rect.left;
             const canvasY = currentCenter.y - rect.top;
             
-            graphRef.current.zoom(newZoom / currentZoom, {
+            graphRef.current.zoomBy?.(newZoom / currentZoom, false, {
               x: canvasX,
               y: canvasY
             });

@@ -40,6 +40,11 @@ export function UserSettings() {
     loadProfileAndSettings();
   }, []);
 
+  // Apply theme changes immediately
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', editedSettings.theme);
+  }, [editedSettings.theme]);
+
   const loadProfileAndSettings = async () => {
     try {
       const [profileRes, settingsRes] = await Promise.all([

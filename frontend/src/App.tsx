@@ -63,6 +63,24 @@ export default function App() {
 
   const triggerRefresh = useCallback(() => setRefreshToken((token) => token + 1), []);
 
+  // Load and apply theme on mount
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const response = await fetch('/api/v1/user/settings');
+        if (response.ok) {
+          const settings = await response.json();
+          const theme = settings.theme || 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      } catch (error) {
+        console.error('Failed to load theme:', error);
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    };
+    loadTheme();
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
 
