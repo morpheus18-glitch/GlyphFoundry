@@ -352,7 +352,16 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       };
     });
 
-    const g6Edges = data.edges.map(edge => ({
+    // Deduplicate edges by source-target pair (fixes "Edge already exists" error)
+    const uniqueEdges = new Map<string, typeof data.edges[0]>();
+    data.edges.forEach(edge => {
+      const edgeId = `${edge.source}-${edge.target}`;
+      if (!uniqueEdges.has(edgeId)) {
+        uniqueEdges.set(edgeId, edge);
+      }
+    });
+    
+    const g6Edges = Array.from(uniqueEdges.values()).map(edge => ({
       id: `${edge.source}-${edge.target}`,
       source: edge.source,
       target: edge.target,
