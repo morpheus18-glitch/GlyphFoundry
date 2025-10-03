@@ -6,6 +6,7 @@ import { useGraphGestures } from '../hooks/useGraphGestures';
 import { usePerformanceMonitor, type QualityTier } from '../hooks/usePerformanceMonitor';
 import { getConfigForTier } from '../config/renderingTiers';
 import { QualityTierIndicator } from './QualityTierIndicator';
+import { FocusedNodeView } from './FocusedNodeView';
 
 // Types matching backend API
 interface ApiNode {
@@ -73,6 +74,8 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<string>('');
+  const [focusedNode, setFocusedNode] = useState<ApiNode | null>(null);
+  const focusedNodeIdRef = useRef<string | null>(null);
   const birthTimestamps = useRef<Map<string, number>>(new Map());
   const seenNodeIds = useRef<Set<string>>(new Set());
   const hasGPU = useRef(detectGPU());
@@ -193,6 +196,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   // Transform API data to G6 format
   const transformToG6Data = useCallback((data: GraphPayload) => {
     const now = Date.now();
+    const focusedId = focusedNodeIdRef.current;
     
     const g6Nodes = data.nodes.map(node => {
       // Track birth timestamps for new nodes
@@ -202,6 +206,9 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       
       const importance = node.importance ?? Math.min(1, (node.degree ?? 1) / 8);
       const isImportant = importance > 0.75;
+      const isFocused = focusedId === node.id;
+      const isDimmed = focusedId && !isFocused;
+      
       const color = isImportant ? '#ff00ff' : '#00ffff';
       const baseSize = 8 + importance * 12;
       
@@ -210,6 +217,12 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       const birthScale = birthAge < 1 
         ? birthAge * birthAge * (3 - 2 * birthAge) 
         : 1;
+      
+      // Apply focus/dim effects
+      const focusScale = isFocused ? 2.0 : 1.0;
+      const finalSize = baseSize * birthScale * focusScale;
+      const opacity = isDimmed ? 0.15 : (isFocused ? 1.0 : 0.9 * birthScale);
+      const shadowBlur = isFocused ? 40 : (10 * birthScale);
       
       return {
         id: node.id,
@@ -224,18 +237,18 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           y: node.y ?? 0,
           z: node.z ?? 0,
           type: 'circle-node',
-          size: baseSize * birthScale,
+          size: finalSize,
           color,
           style: {
             fill: color,
             stroke: color,
-            lineWidth: 2,
-            opacity: 0.9 * birthScale,
+            lineWidth: isFocused ? 4 : 2,
+            opacity,
             shadowColor: color,
-            shadowBlur: 10 * birthScale,
+            shadowBlur,
             label: node.label || '',
             labelFill: '#ffffff',
-            labelFontSize: 10,
+            labelFontSize: isFocused ? 14 : 10,
             labelBackground: true,
             labelBackgroundFill: '#000000',
             labelBackgroundOpacity: 0.7
@@ -333,11 +346,47 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
 
         await graph.render();
 
-        // Node click handler
-        graph.on('node:click', (evt: any) => {
+        // Node click handler with focus and zoom
+        graph.on('node:click', async (evt: any) => {
           const nodeModel = graph.getNodeData(evt.itemId);
-          if (nodeModel?.data?.originalData && onNodeSelect) {
-            onNodeSelect(nodeModel.data.originalData as ApiNode);
+          if (nodeModel?.data?.originalData) {
+            const node = nodeModel.data.originalData as ApiNode;
+            
+            // Set focused node for detail view and visual effects
+            setFocusedNode(node);
+            focusedNodeIdRef.current = node.id;
+            
+            // Update visual effects
+            if (latestDataRef.current) {
+              const updatedData = transformToG6Data(latestDataRef.current);
+              (graph as any).changeData(updatedData);
+            }
+            
+            // Zoom camera to node with animation using G6 v5 API
+            const nodeData = graph.getNodeData(evt.itemId);
+            const x = Number(nodeData?.data?.x);
+            const y = Number(nodeData?.data?.y);
+            
+            if (!isNaN(x) && !isNaN(y)) {
+              const position = { x, y } as any;
+              
+              // Pan to node
+              await (graph as any).translateTo(position, {
+                duration: 500,
+                easing: 'ease-in-out'
+              });
+              
+              // Zoom in to 1.5x
+              await (graph as any).zoomTo(1.5, {
+                duration: 500,
+                easing: 'ease-in-out'
+              }, position);
+            }
+            
+            // Call parent handler
+            if (onNodeSelect) {
+              onNodeSelect(node);
+            }
           }
         });
 
@@ -381,6 +430,63 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // ESC key handler to close focused view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && focusedNode) {
+        setFocusedNode(null);
+        focusedNodeIdRef.current = null;
+        
+        // Update visual effects to remove dimming
+        if (graphRef.current && latestDataRef.current) {
+          const updatedData = transformToG6Data(latestDataRef.current);
+          graphRef.current.changeData(updatedData);
+        }
+        
+        // Reset camera zoom
+        if (graphRef.current && 'fitView' in graphRef.current) {
+          (graphRef.current as any).fitView({ 
+            duration: 500,
+            easing: 'ease-in-out'
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedNode, transformToG6Data]);
+
+  // Helper to prepare node data for focused view
+  const prepareFocusedNodeData = useCallback((node: ApiNode) => {
+    const connections = latestDataRef.current?.edges
+      .filter(e => e.source === node.id || e.target === node.id)
+      .map(e => {
+        const connectedId = e.source === node.id ? e.target : e.source;
+        const connectedNode = latestDataRef.current?.nodes.find(n => n.id === connectedId);
+        return {
+          id: connectedId,
+          name: connectedNode?.label || connectedId,
+          weight: e.weight
+        };
+      })
+      .slice(0, 6) || [];
+
+    return {
+      id: node.id,
+      name: node.label || node.id,
+      summary: node.summary,
+      content: node.summary || `Node ${node.id}`,
+      tags: node.kind ? [node.kind] : [],
+      connections,
+      metadata: {
+        duration: node.degree ? node.degree * 5 : undefined,
+        messageCount: node.degree,
+        participantCount: connections.length
+      }
+    };
   }, []);
 
   // Poll for updates every 3 seconds and track new nodes
@@ -480,6 +586,31 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           metrics={metrics}
           onTierChange={setTier}
           showDetails={true}
+        />
+      )}
+
+      {/* Focused Node View */}
+      {focusedNode && (
+        <FocusedNodeView
+          node={prepareFocusedNodeData(focusedNode)}
+          onClose={() => {
+            setFocusedNode(null);
+            focusedNodeIdRef.current = null;
+            
+            // Update visual effects to remove dimming
+            if (graphRef.current && latestDataRef.current) {
+              const updatedData = transformToG6Data(latestDataRef.current);
+              graphRef.current.changeData(updatedData);
+            }
+            
+            // Reset camera zoom
+            if (graphRef.current && 'fitView' in graphRef.current) {
+              (graphRef.current as any).fitView({ 
+                duration: 500,
+                easing: 'ease-in-out'
+              });
+            }
+          }}
         />
       )}
     </div>
