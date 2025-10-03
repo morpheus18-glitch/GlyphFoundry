@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 export type QualityTier = 'ultra' | 'high' | 'standard' | 'eco';
 
+// Mobile detection as module-level constant (computed once on load)
+const IS_MOBILE = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 export interface PerformanceMetrics {
   fps: number;
   frameTime: number;
@@ -35,7 +38,8 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
     isStable: true
   });
 
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  // Use module-level constant (no hook, no re-render issues)
+  const isMobile = IS_MOBILE;
   const [currentTier, setCurrentTier] = useState<QualityTier>(isMobile ? 'standard' : 'high');
   
   const frameTimesRef = useRef<number[]>([]);
