@@ -420,6 +420,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           ],
           layout: {
             type: 'force',
+            animated: !wasmPhysics.isReady,
             preventOverlap: true,
             nodeSize: 30,
             linkDistance: 150,
@@ -451,6 +452,9 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         });
 
         await graph.render();
+
+        // Store graph ref BEFORE any physics initialization
+        graphRef.current = graph;
 
         // Track viewport changes for culling
         const updateViewport = () => {
@@ -566,6 +570,9 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     return () => {
       if (animationFrame.current) {
         cancelAnimationFrame(animationFrame.current);
+      }
+      if (physicsTickRef.current) {
+        cancelAnimationFrame(physicsTickRef.current);
       }
       if (graphRef.current) {
         graphRef.current.destroy();
@@ -740,6 +747,94 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
 
     return () => clearInterval(interval);
   }, [fetchGraphData, transformToG6Data]);
+
+  // Separate effect to initialize WASM physics when ready
+  useEffect(() => {
+    if (!wasmPhysics.isReady || !graphRef.current || !latestDataRef.current) {
+      return;
+    }
+
+    const rawData = latestDataRef.current;
+    if (rawData.nodes.length === 0) return;
+
+    console.log('🚀 Initializing WASM physics bridge...');
+    console.log(`✅ Rust Wasm Physics Engine initialized`);
+    
+    // Convert nodes to physics format
+    const physicsNodes = rawData.nodes.map(node => ({
+      id: node.id,
+      x: node.x ?? Math.random() * 1000 - 500,
+      y: node.y ?? Math.random() * 1000 - 500,
+      z: 0,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      mass: (node.importance ?? 0.5) * 10 + 1
+    }));
+
+    // Convert edges to physics format
+    const physicsEdges = rawData.edges.map(edge => ({
+      source: edge.source,
+      target: edge.target,
+      weight: edge.weight ?? 1.0
+    }));
+
+    // Initialize WASM physics engine
+    wasmPhysics.setNodes(physicsNodes);
+    wasmPhysics.setEdges(physicsEdges);
+    wasmPhysics.setParams(
+      500,    // repulsion
+      0.5,    // attraction
+      0.9,    // damping
+      0.5     // theta (Barnes-Hut approximation)
+    );
+
+    // Physics tick loop
+    let iterations = 0;
+    const maxIterations = 100;
+    const startPhysicsLoop = () => {
+      if (iterations >= maxIterations || !graphRef.current) {
+        console.log(`✅ WASM physics completed: ${iterations} iterations`);
+        return;
+      }
+
+      const tickStart = performance.now();
+      
+      wasmPhysics.tick(0.016).then((updatedNodes) => {
+        const tickTime = performance.now() - tickStart;
+        
+        // Apply positions to G6
+        updatedNodes.forEach(node => {
+          const g6Node = graphRef.current?.getNodeData(node.id);
+          if (g6Node && graphRef.current) {
+            graphRef.current.updateNodeData([{
+              id: node.id,
+              data: {
+                ...g6Node.data,
+                x: node.x,
+                y: node.y
+              }
+            }]);
+          }
+        });
+
+        iterations++;
+        
+        // Log performance every 20 iterations
+        if (iterations % 20 === 0) {
+          const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          const target = isMobileDevice ? 25 : 16;
+          const status = tickTime <= target ? '✅' : '⚠️';
+          console.log(`${status} WASM physics tick ${iterations}: ${tickTime.toFixed(2)}ms (target: ≤${target}ms)`);
+        }
+
+        // Continue loop
+        physicsTickRef.current = requestAnimationFrame(startPhysicsLoop);
+      });
+    };
+
+    startPhysicsLoop();
+  }, [wasmPhysics.isReady, wasmPhysics]);
 
   return (
     <div className={`relative w-full h-full bg-black ${className}`}>

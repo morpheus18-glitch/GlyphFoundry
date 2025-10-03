@@ -28,7 +28,7 @@ const ROADMAP_DATA: Phase[] = [
     goal: '50k-100k nodes at 45+ FPS desktop, 30+ FPS mobile',
     duration: '5-7 weeks',
     status: 'in_progress',
-    completion: 63,
+    completion: 75,
     tasks: [
       {
         id: 'task1',
@@ -78,8 +78,8 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task6',
         title: 'Wasm-G6 Integration Bridge',
-        status: 'pending',
-        duration: '3-5 days',
+        status: 'completed',
+        duration: 'Complete',
         dependencies: ['task2', 'task5'],
         complexity: 'high',
         target: '≤16ms physics tick desktop, ≤25ms mobile'
