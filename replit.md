@@ -25,10 +25,10 @@ A high-performance, GPU-accelerated graph visualization engine optimized for lar
 
 #### Babylon.js 3-Tier Renderer System
 This system offers game engine-quality rendering with automatic selection based on device capabilities:
-1.  **WebGPU Babylon Renderer**: For high-end desktop GPUs, offering advanced effects like clustered Forward+ lighting, full PBR materials with HDR image-based lighting (environment intensity 1.2), SSAO/SSR, volumetric effects, and HDR bloom (weight 1.5, kernel 128). Ultra-bright massive nodes (18x scale multiplier, 8x emissive color with 3.5 intensity) using faceted icospheres, pulsing animations, and cinematic click-to-zoom. Edges removed for cleaner visuals. GlowLayer set to 3.5 intensity with kernel 128 for ultra-bright HDR neon aesthetics. Full 3D orbital camera controls with unrestricted beta rotation, allowUpsideDown enabled, and camera reset functionality (ESC key or background double-click animates to canonical orbit: radius 1200, alpha π/4, beta π/3, target origin).
-2.  **WebGL Babylon Renderer**: A WebGL 2.0 fallback with high-quality effects, including standard forward lighting, full PBR materials (metallic 0.95, roughness 0.15, albedo 0.5x) with HDR environment textures (intensity 1.2), and matching ultra-bright HDR node visuals (18x scale, 8x emissive with 3.5 intensity, textured icospheres, glow 3.5/128, bloom 0.2/1.5/128/0.8, animations, click-to-zoom). Shares identical camera controls with unrestricted 3D orbital movement and camera reset functionality.
+1.  **WebGPU Babylon Renderer**: For high-end desktop GPUs, offering advanced effects like clustered Forward+ lighting, full PBR materials with HDR image-based lighting (environment intensity 1.2), SSAO/SSR, volumetric effects, and HDR bloom (weight 1.5, kernel 128). Colorful massive nodes (18x scale multiplier, 2.5x emissive brightness with 1.8 intensity, 0.8x albedo for color visibility) using faceted icospheres, pulsing animations, and cinematic click-to-zoom. Edges removed for cleaner visuals. GlowLayer set to 3.5 intensity with kernel 128 for HDR neon aesthetics. Full 3D orbital camera controls with unrestricted beta rotation, allowUpsideDown enabled, and camera reset functionality (ESC key or background double-click animates to canonical orbit: radius 1200, alpha π/4, beta π/3, target origin).
+2.  **WebGL Babylon Renderer**: A WebGL 2.0 fallback with high-quality effects, including standard forward lighting, full PBR materials (metallic 0.95, roughness 0.15, albedo 0.8x for color visibility) with HDR environment textures (intensity 1.2), and matching colorful HDR node visuals (18x scale, 2.5x emissive with 1.8 intensity, textured icospheres, glow 3.5/128, bloom 0.2/1.5/128/0.8, animations, click-to-zoom). Shares identical camera controls with unrestricted 3D orbital movement and camera reset functionality.
 3.  **Three.js Fallback Renderer**: For legacy or mobile devices, providing WebGL 1.0 compatibility with basic lighting and post-processing bloom.
-The system automatically detects GPU capabilities and assigns tiers, with consistent visual styling (pure black backgrounds, ultra-bright HDR neon nodes) across all tiers. Both Babylon renderers feature professional-grade memory management with complete event listener cleanup (all handlers stored in refs and properly nullified on unmount), full 3D orbital camera controls (angular sensitivity 500, no beta limits), and true game engine-quality PBR rendering with HDR environment maps.
+The system automatically detects GPU capabilities and assigns tiers, with consistent visual styling (pure black backgrounds, colorful HDR neon nodes with diverse colors based on information types) across all tiers. Both Babylon renderers feature professional-grade memory management with complete event listener cleanup (all handlers stored in refs and properly nullified on unmount), full 3D orbital camera controls (angular sensitivity 500, no beta limits), and true game engine-quality PBR rendering with HDR environment maps.
 
 #### Three.js Cinematic Renderer
 A Hollywood-grade 3D renderer featuring ACES Tone Mapping, volumetric god rays, anamorphic bloom, depth of field, chromatic aberration, and vignette effects. It employs four adaptive rendering paths based on camera distance and sun availability, with Web Workers powering force-directed layout calculations.
@@ -38,6 +38,15 @@ A comprehensive three-tab interface for CRUD operations on the knowledge graph: 
 
 ### Graph Data Model
 The system models `Nodes` (messages, glyphs, entities), `Edges` (weighted relationships), `Tags` (hierarchical labeling), and `Coordinates` (3D positioning). It also supports a 4D Glyph system for time-dimensional visualization.
+
+#### Intelligent Color Generation
+Nodes are assigned unique, vibrant colors based on their properties to create visual diversity and semantic meaning:
+- **node.kind** → base color family (cyan for messages, magenta for concepts, yellow for events, green for entities, orange for documents, red for alerts, blue for data)
+- **created_at** → time-based hue variation (±30 degrees from base color)
+- **connection_strength** → affects saturation (0.6-1.0 range)
+- **importance_score** → affects brightness (0.4-1.0 range)
+
+This system ensures each information type has a distinct color family while maintaining visual diversity within each category. The `/update-colors` endpoint allows bulk regeneration of colors for existing nodes.
 
 ### User Personalization & Account Management
 Features a user settings interface for profile management (name, email, profile image), general preferences (theme, custom AI instructions), and visualization settings (force strength, label visibility). Backend endpoints handle updates with validation and tenant-scoped data isolation. An interactive 6-step onboarding guides new users through key features.
