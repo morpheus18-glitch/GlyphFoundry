@@ -134,6 +134,31 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     const TOKEN = import.meta.env.VITE_GRAPH_TOKEN || '';
     const config = getConfigForTier(currentTier);
     
+    // Check for test mode URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const testMode = urlParams.get('test');
+    const testNodes = urlParams.get('testNodes');
+    
+    // Test mode: use synthetic data endpoint
+    if (testMode === 'true' || testNodes) {
+      const nodeCount = testNodes ? parseInt(testNodes) : 100000;
+      console.log(`🧪 TEST MODE: Generating ${nodeCount} synthetic nodes`);
+      
+      try {
+        const response = await fetch(
+          `${BASE}/test-data?node_count=${nodeCount}&edge_density=0.001`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`🧪 Generated ${data.stats.node_count} nodes, ${data.stats.edge_count} edges in ${data.stats.generation_time_seconds}s`);
+          return data;
+        }
+      } catch (err) {
+        console.error('Test data generation failed:', err);
+      }
+    }
+    
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
 
