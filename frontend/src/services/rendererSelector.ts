@@ -15,30 +15,22 @@ export async function selectOptimalRenderer(): Promise<RendererSelection> {
     return {
       tier: 'webgpu-babylon',
       capabilities,
-      reasoning: `WebGPU tier - ${capabilities.gpuTier} GPU (${capabilities.gpuVendor})`
+      reasoning: `WebGPU Babylon - ${capabilities.gpuTier} GPU (${capabilities.gpuVendor})`
     };
   }
 
-  if (capabilities.hasWebGL2 && (capabilities.gpuTier === 'high' || capabilities.gpuTier === 'medium')) {
+  if (capabilities.hasWebGL2 || capabilities.hasWebGL) {
     return {
       tier: 'webgl-babylon',
       capabilities,
-      reasoning: `WebGL tier - ${capabilities.gpuTier} GPU (WebGPU not available)`
-    };
-  }
-
-  if (capabilities.hasWebGL || capabilities.hasWebGL2) {
-    return {
-      tier: 'threejs-fallback',
-      capabilities,
-      reasoning: `Three.js fallback - ${capabilities.gpuTier} GPU (Low-end hardware)`
+      reasoning: `WebGL Babylon - ${capabilities.gpuTier} GPU (Game engine quality rendering)`
     };
   }
 
   return {
     tier: 'threejs-fallback',
     capabilities,
-    reasoning: 'Three.js fallback - No hardware acceleration detected'
+    reasoning: 'Three.js fallback - No WebGL detected'
   };
 }
 
