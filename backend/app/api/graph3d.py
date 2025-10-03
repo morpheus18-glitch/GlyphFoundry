@@ -28,6 +28,7 @@ async def get_graph_data(
             COALESCE(pos_x, 0.0) as x,
             COALESCE(pos_y, 0.0) as y,
             COALESCE(pos_z, 0.0) as z,
+            COALESCE(color, '#00ffff') as color,
             COALESCE(size, 1.0) as size,
             COALESCE(importance_score, 0.5) as importance,
             COALESCE(
@@ -75,6 +76,7 @@ async def get_graph_data(
             'x': row.x,
             'y': row.y,
             'z': row.z,
+            'color': row.color,
             'size': row.size,
             'importance': row.importance,
             'degree': row.degree,
