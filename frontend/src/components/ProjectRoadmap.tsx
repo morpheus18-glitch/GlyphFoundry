@@ -28,7 +28,7 @@ const ROADMAP_DATA: Phase[] = [
     goal: '50k-100k nodes at 45+ FPS desktop, 30+ FPS mobile',
     duration: '5-7 weeks',
     status: 'in_progress',
-    completion: 50,
+    completion: 63,
     tasks: [
       {
         id: 'task1',
@@ -68,8 +68,8 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task5',
         title: 'Viewport Culling & Lazy Loading',
-        status: 'pending',
-        duration: '6-8 days',
+        status: 'completed',
+        duration: 'Complete',
         dependencies: ['task2'],
         complexity: 'critical',
         target: '1M nodes, render ≤50k simultaneously',

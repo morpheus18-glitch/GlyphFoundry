@@ -41,8 +41,8 @@ export const RENDERING_TIERS: Record<QualityTier, RenderingConfig> = {
     displayName: 'Ultra',
     description: 'Maximum visual quality - Desktop only',
     
-    maxNodes: 10000,
-    maxEdges: 30000,
+    maxNodes: 50000,
+    maxEdges: 150000,
     
     enableWebGL: true,
     enableMSAA: true,
@@ -76,8 +76,8 @@ export const RENDERING_TIERS: Record<QualityTier, RenderingConfig> = {
     displayName: 'High',
     description: 'Balanced quality and performance',
     
-    maxNodes: 5000,
-    maxEdges: 15000,
+    maxNodes: 30000,
+    maxEdges: 90000,
     
     enableWebGL: true,
     enableMSAA: true,

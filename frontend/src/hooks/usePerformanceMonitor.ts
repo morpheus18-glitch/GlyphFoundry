@@ -48,9 +48,7 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
 
   const determineTier = useCallback((avgFps: number): QualityTier => {
     if (isMobile) {
-      if (avgFps >= 50) return 'high';
       if (avgFps >= 30) return 'standard';
-      if (avgFps >= 20) return 'eco';
       return 'eco';
     } else {
       if (avgFps >= 55) return 'ultra';
