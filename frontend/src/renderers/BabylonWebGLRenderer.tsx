@@ -280,7 +280,7 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
         handleResizeRef.current = null;
       }
       if (sceneRef.current) {
-        sceneRef.current.onPointerDown = null;
+        sceneRef.current.onPointerDown = undefined;
         handlePointerDownRef.current = null;
         sceneRef.current.dispose();
       }
@@ -390,7 +390,11 @@ function renderGraph(
     wireframeMaterial.alpha = 1.0;
     wireframeSphere.material = wireframeMaterial;
 
-    scene.registerBeforeRender(() => {
+    const observer = scene.onBeforeRenderObservable.add(() => {
+      if (innerSphere.isDisposed() || wireframeSphere.isDisposed()) {
+        scene.onBeforeRenderObservable.remove(observer);
+        return;
+      }
       const time = performance.now() * 0.001;
       const phaseOffset = (index % 10) * 0.5;
       const scale = 1 + Math.sin(time * 2 + phaseOffset) * 0.15;
