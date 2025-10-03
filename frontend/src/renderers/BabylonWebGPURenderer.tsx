@@ -146,9 +146,9 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
 
         const glowLayer = new GlowLayer('glow', scene, {
           mainTextureFixedSize: 2048,
-          blurKernelSize: 128
+          blurKernelSize: 96
         });
-        glowLayer.intensity = 3.5;
+        glowLayer.intensity = 1.4;
 
         const defaultPipeline = new DefaultRenderingPipeline(
           'default',
@@ -159,10 +159,10 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         defaultPipeline.samples = 4;
         defaultPipeline.fxaaEnabled = true;
         defaultPipeline.bloomEnabled = true;
-        defaultPipeline.bloomThreshold = 0.1;
-        defaultPipeline.bloomWeight = 1.5;
-        defaultPipeline.bloomKernel = 128;
-        defaultPipeline.bloomScale = 0.7;
+        defaultPipeline.bloomThreshold = 0.4;
+        defaultPipeline.bloomWeight = 0.7;
+        defaultPipeline.bloomKernel = 96;
+        defaultPipeline.bloomScale = 0.6;
 
         defaultPipeline.chromaticAberrationEnabled = true;
         if (defaultPipeline.chromaticAberration) {
@@ -173,10 +173,10 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         if (defaultPipeline.imageProcessing) {
           defaultPipeline.imageProcessing.toneMappingEnabled = true;
           defaultPipeline.imageProcessing.toneMappingType = 1;
-          defaultPipeline.imageProcessing.exposure = 2.2;
-          defaultPipeline.imageProcessing.contrast = 1.5;
+          defaultPipeline.imageProcessing.exposure = 1.3;
+          defaultPipeline.imageProcessing.contrast = 1.15;
           defaultPipeline.imageProcessing.vignetteEnabled = true;
-          defaultPipeline.imageProcessing.vignetteWeight = 2.0;
+          defaultPipeline.imageProcessing.vignetteWeight = 0.8;
         }
 
         const ssao = new SSAO2RenderingPipeline(
@@ -188,9 +188,9 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
           },
           [camera]
         );
-        ssao.radius = 3;
-        ssao.totalStrength = 1.5;
-        ssao.base = 0.1;
+        ssao.radius = 1.8;
+        ssao.totalStrength = 0.7;
+        ssao.base = 0.4;
 
         renderGraph(scene, nodes, edges, onNodeClick);
 
@@ -260,9 +260,9 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         </div>
       )}
       {isReady && (
-        <div className="absolute bottom-4 right-4 md:top-4 md:left-4 md:bottom-auto md:right-auto bg-black/60 backdrop-blur px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-cyan-500/30">
-          <div className="text-cyan-400 text-xs md:text-sm font-mono">
-            WebGPU | {nodes.length} nodes | {edges.length} edges
+        <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-cyan-500/40 shadow-lg">
+          <div className="text-cyan-400 text-xs font-mono whitespace-nowrap">
+            WebGPU | {nodes.length}N | {edges.length}E
           </div>
         </div>
       )}
@@ -295,14 +295,15 @@ function renderGraph(
     const material = new StandardMaterial(`mat-${node.id}`, scene);
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
-    material.emissiveColor = new Color3(rgb.r * 7.0, rgb.g * 7.0, rgb.b * 7.0);
-    material.diffuseColor = new Color3(rgb.r * 0.4, rgb.g * 0.4, rgb.b * 0.4);
-    material.specularColor = new Color3(3, 3, 3);
-    material.specularPower = 256;
-    material.alpha = 0.9;
+    material.emissiveColor = new Color3(rgb.r * 2.5, rgb.g * 2.5, rgb.b * 2.5);
+    material.diffuseColor = new Color3(rgb.r * 0.8, rgb.g * 0.8, rgb.b * 0.8);
+    material.specularColor = new Color3(2, 2, 2);
+    material.specularPower = 128;
+    material.alpha = 0.95;
     
     const normalMap = new Texture("https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight/grasslight-big-nm.jpg", scene);
     material.bumpTexture = normalMap;
+    material.bumpTexture.level = 0.8;
 
     sphere.material = material;
 
