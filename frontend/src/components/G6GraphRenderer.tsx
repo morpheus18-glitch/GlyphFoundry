@@ -603,6 +603,19 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         
         // Initial viewport setup (now graphRef is set, culling can work)
         updateViewport();
+        
+        // Auto-fit graph to viewport on mobile for better initial view
+        if (isMobileDevice && !isCullingActive) {
+          setTimeout(() => {
+            if (graphRef.current && 'fitView' in graphRef.current) {
+              (graphRef.current as any).fitView({ 
+                padding: [20, 20, 20, 20],
+                duration: 0 // Instant on mobile for snappy UX
+              });
+              console.log('📱 Auto-fitted graph to mobile viewport');
+            }
+          }, 100);
+        }
 
         // Node click handler with focus and zoom
         graph.on('node:click', async (evt: any) => {
