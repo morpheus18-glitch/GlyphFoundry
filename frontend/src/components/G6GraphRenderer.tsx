@@ -10,6 +10,7 @@ import { FocusedNodeView } from './FocusedNodeView';
 import { useViewportCulling } from '../hooks/useViewportCulling';
 import { useViewportCullingWorker } from '../hooks/useViewportCullingWorker';
 import { calculateViewportBounds, type ViewportInfo } from '../utils/viewportCulling';
+import { useWasmPhysics } from '../hooks/useWasmPhysics';
 
 // Types matching backend API
 interface ApiNode {
@@ -93,6 +94,11 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const animationFrame = useRef<number | null>(null);
   const latestDataRef = useRef<GraphPayload | null>(null);
   const enableCullingRef = useRef<boolean>(true); // Toggle for 1M node mode
+
+  // WASM Physics Engine for faster layout calculation
+  const wasmPhysics = useWasmPhysics();
+  const physicsTickRef = useRef<number | null>(null);
+  const lastPhysicsTime = useRef<number>(0);
 
   // Adaptive rendering system
   const { metrics, currentTier, setTier, isMobile } = usePerformanceMonitor({
