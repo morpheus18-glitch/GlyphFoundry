@@ -386,12 +386,13 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       const culled = await Promise.resolve(cullToViewport(viewportInfo, 300));
       
       // Update stats regardless of visible count
+      const cullTime = 'cullTimeMs' in culled.stats ? culled.stats.cullTimeMs : undefined;
       setStats(
         `${culled.stats.visible}/${culled.stats.total} nodes visible | ` +
         `${culled.visibleEdges.length} edges | ` +
         `LOD: ${culled.stats.lodLevel} | ` +
         `Culled: ${culled.stats.culled}` +
-        (culled.stats.cullTimeMs ? ` | ${culled.stats.cullTimeMs}ms` : '')
+        (cullTime ? ` | ${cullTime}ms` : '')
       );
       
       // Always update graph to match culled viewport (even if empty)
@@ -404,7 +405,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       (graphRef.current as any).changeData?.(g6Data);
       
       if (culled.visibleNodes.length > 0) {
-        console.log(`🔍 Viewport culling: ${culled.stats.visible}/${culled.stats.total} nodes, LOD ${culled.stats.lodLevel}${culled.stats.cullTimeMs ? ` (${culled.stats.cullTimeMs}ms)` : ''}`);
+        console.log(`🔍 Viewport culling: ${culled.stats.visible}/${culled.stats.total} nodes, LOD ${culled.stats.lodLevel}${cullTime ? ` (${cullTime}ms)` : ''}`);
       } else {
         console.log(`🔍 Viewport culling: No nodes visible in viewport`);
       }
