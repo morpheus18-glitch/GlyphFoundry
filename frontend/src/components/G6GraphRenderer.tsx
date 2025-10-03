@@ -7,6 +7,8 @@ import { usePerformanceMonitor, type QualityTier } from '../hooks/usePerformance
 import { getConfigForTier } from '../config/renderingTiers';
 import { QualityTierIndicator } from './QualityTierIndicator';
 import { FocusedNodeView } from './FocusedNodeView';
+import { useViewportCulling } from '../hooks/useViewportCulling';
+import { calculateViewportBounds, type ViewportInfo } from '../utils/viewportCulling';
 
 // Types matching backend API
 interface ApiNode {
@@ -75,12 +77,21 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<string>('');
   const [focusedNode, setFocusedNode] = useState<ApiNode | null>(null);
+  const [graphData, setGraphData] = useState<GraphPayload>({ nodes: [], edges: [] }); // State for culling hook
+  const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({
+    center: { x: 0, y: 0 },
+    width: 800,
+    height: 600,
+    zoom: 1.0,
+    bounds: { minX: -400, maxX: 400, minY: -300, maxY: 300 }
+  });
   const focusedNodeIdRef = useRef<string | null>(null);
   const birthTimestamps = useRef<Map<string, number>>(new Map());
   const seenNodeIds = useRef<Set<string>>(new Set());
   const hasGPU = useRef(detectGPU());
   const animationFrame = useRef<number | null>(null);
   const latestDataRef = useRef<GraphPayload | null>(null);
+  const enableCullingRef = useRef<boolean>(true); // Toggle for 1M node mode
 
   // Adaptive rendering system
   const { metrics, currentTier, setTier, isMobile } = usePerformanceMonitor({
@@ -91,6 +102,12 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       console.log(`🎨 Quality tier changed: ${tier}`);
     }
   });
+
+  // Viewport culling system (for massive graphs)
+  const { cullToViewport, quadTreeSize } = useViewportCulling(
+    graphData.nodes,
+    graphData.edges
+  );
 
   // Mobile gesture controls
   useGraphGestures(containerRef, graphRef, {
@@ -277,6 +294,41 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     return { nodes: g6Nodes, edges: g6Edges };
   }, []);
 
+  // Apply viewport culling when viewport changes (for large graphs)
+  useEffect(() => {
+    if (!graphRef.current || !latestDataRef.current) return;
+    
+    const nodeCount = latestDataRef.current.nodes.length;
+    
+    // Only apply culling for graphs with > 10k nodes
+    if (nodeCount < 10000 || !enableCullingRef.current) return;
+
+    const culled = cullToViewport(viewportInfo, 300);
+    
+    // Update stats regardless of visible count
+    setStats(
+      `${culled.stats.visible}/${culled.stats.total} nodes visible | ` +
+      `${culled.visibleEdges.length} edges | ` +
+      `LOD: ${culled.stats.lodLevel} | ` +
+      `Culled: ${culled.stats.culled}`
+    );
+    
+    // Always update graph to match culled viewport (even if empty)
+    const g6Data = transformToG6Data({
+      nodes: culled.visibleNodes,
+      edges: culled.visibleEdges,
+      stats: latestDataRef.current.stats
+    });
+
+    (graphRef.current as any).changeData?.(g6Data);
+    
+    if (culled.visibleNodes.length > 0) {
+      console.log(`🔍 Viewport culling: ${culled.stats.visible}/${culled.stats.total} nodes, LOD ${culled.stats.lodLevel}`);
+    } else {
+      console.log(`🔍 Viewport culling: No nodes visible in viewport`);
+    }
+  }, [viewportInfo, cullToViewport, transformToG6Data]);
+
   // Initialize G6 graph
   useEffect(() => {
     if (!containerRef.current) return;
@@ -288,7 +340,8 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         // Fetch initial data
         const rawData = await fetchGraphData();
         latestDataRef.current = rawData;
-        const g6Data = transformToG6Data(rawData);
+        setGraphData(rawData); // Update state to trigger QuadTree rebuild
+        const nodeCount = rawData.nodes.length;
         
         // Mark all initial nodes as seen and set birth timestamps
         const now = Date.now();
@@ -297,8 +350,20 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           birthTimestamps.current.set(node.id, now);
         });
         
+        // Check if we should use culling (>10k nodes)
+        const isCullingActive = nodeCount >= 10000 && enableCullingRef.current;
+        
+        // Prepare initial graph data (empty for large graphs, full for small)
+        const initialData = isCullingActive 
+          ? { nodes: [], edges: [] }  // Start empty, let culling populate
+          : transformToG6Data(rawData);
+        
         // Update stats
-        setStats(`${g6Data.nodes.length} nodes, ${g6Data.edges.length} edges`);
+        if (isCullingActive) {
+          setStats(`Loading ${nodeCount} nodes... (culling enabled)`);
+        } else {
+          setStats(`${initialData.nodes.length} nodes, ${initialData.edges.length} edges`);
+        }
 
         // Create G6 graph instance
         const graph = new Graph({
@@ -321,7 +386,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
             edgeStrength: 0.1,
             collideStrength: 0.8
           },
-          data: g6Data,
+          data: initialData,
           node: {
             style: {
               size: 10,
@@ -346,6 +411,53 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
 
         await graph.render();
 
+        // Track viewport changes for culling
+        const updateViewport = () => {
+          if (!containerRef.current || !graph) return;
+
+          try {
+            // Get current zoom from G6
+            const zoom = (graph as any).getZoom?.() ?? 1.0;
+            
+            // Get camera position - G6 uses methods, not properties
+            const camera = (graph as any).getCamera?.();
+            const position = camera?.getPosition?.() ?? [0, 0];
+            const [x, y] = position;
+            
+            const { clientWidth, clientHeight } = containerRef.current;
+
+            const bounds = calculateViewportBounds(
+              { x, y },
+              clientWidth,
+              clientHeight,
+              zoom
+            );
+
+            setViewportInfo({
+              center: { x, y },
+              width: clientWidth,
+              height: clientHeight,
+              zoom,
+              bounds
+            });
+            
+            console.log(`📹 Viewport updated: center(${x.toFixed(0)}, ${y.toFixed(0)}), zoom: ${zoom.toFixed(2)}`);
+          } catch (err) {
+            console.warn('Failed to update viewport:', err);
+          }
+        };
+
+        // Store graph ref BEFORE initial viewport update (needed for culling)
+        graphRef.current = graph;
+        
+        // Listen to viewport change events
+        graph.on('viewportchange', updateViewport);
+        graph.on('afterzoom', updateViewport);
+        graph.on('aftertranslate', updateViewport);
+        
+        // Initial viewport setup (now graphRef is set, culling can work)
+        updateViewport();
+
         // Node click handler with focus and zoom
         graph.on('node:click', async (evt: any) => {
           const nodeModel = graph.getNodeData(evt.itemId);
@@ -356,10 +468,15 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
             setFocusedNode(node);
             focusedNodeIdRef.current = node.id;
             
-            // Update visual effects
+            // Update visual effects (skip for large graphs, culling handles it)
             if (latestDataRef.current) {
-              const updatedData = transformToG6Data(latestDataRef.current);
-              (graph as any).changeData(updatedData);
+              const nodeCount = latestDataRef.current.nodes.length;
+              const isCullingActive = nodeCount >= 10000 && enableCullingRef.current;
+              
+              if (!isCullingActive) {
+                const updatedData = transformToG6Data(latestDataRef.current);
+                (graph as any).changeData(updatedData);
+              }
             }
             
             // Zoom camera to node with animation using G6 v5 API
@@ -390,8 +507,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           }
         });
 
-        // Store graph ref
-        graphRef.current = graph;
+        // Graph ref already set above (before updateViewport)
         setLoading(false);
         setError(null);
 
@@ -439,10 +555,15 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         setFocusedNode(null);
         focusedNodeIdRef.current = null;
         
-        // Update visual effects to remove dimming
+        // Update visual effects to remove dimming (skip for large graphs)
         if (graphRef.current && latestDataRef.current) {
-          const updatedData = transformToG6Data(latestDataRef.current);
-          graphRef.current.changeData(updatedData);
+          const nodeCount = latestDataRef.current.nodes.length;
+          const isCullingActive = nodeCount >= 10000 && enableCullingRef.current;
+          
+          if (!isCullingActive) {
+            const updatedData = transformToG6Data(latestDataRef.current);
+            graphRef.current.changeData(updatedData);
+          }
         }
         
         // Reset camera zoom
@@ -497,6 +618,8 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       try {
         const rawData = await fetchGraphData();
         latestDataRef.current = rawData;
+        setGraphData(rawData); // Update state to trigger QuadTree rebuild
+        const nodeCount = rawData.nodes.length;
         
         // Detect new nodes and set their birth timestamps
         const now = Date.now();
@@ -509,36 +632,66 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           return false;
         });
         
-        const g6Data = transformToG6Data(rawData);
-        graphRef.current.changeData(g6Data);
+        // Check if culling is active (>10k nodes)
+        const isCullingActive = nodeCount >= 10000 && enableCullingRef.current;
         
-        // Restart animation loop if new nodes detected
-        if (newNodeFound && !animationFrame.current) {
-          const animateBirths = () => {
-            if (!graphRef.current || !latestDataRef.current) return;
+        if (isCullingActive) {
+          // For large graphs: skip full transform, let viewport culling effect handle updates
+          // Just trigger viewport update to re-cull with new data
+          if (graphRef.current && containerRef.current) {
+            const zoom = (graphRef.current as any).getZoom?.() ?? 1.0;
+            const camera = (graphRef.current as any).getCamera?.();
+            const position = camera?.getPosition?.() ?? [0, 0];
+            const [x, y] = position;
+            const { clientWidth, clientHeight } = containerRef.current;
             
-            const now = Date.now();
-            let needsUpdate = false;
+            const bounds = calculateViewportBounds(
+              { x, y },
+              clientWidth,
+              clientHeight,
+              zoom
+            );
             
-            birthTimestamps.current.forEach((birthTime) => {
-              const birthAge = (now - birthTime) / 1500;
-              if (birthAge < 1) {
-                needsUpdate = true;
-              }
+            setViewportInfo({
+              center: { x, y },
+              width: clientWidth,
+              height: clientHeight,
+              zoom,
+              bounds
             });
-            
-            if (needsUpdate) {
-              const updatedData = transformToG6Data(latestDataRef.current);
-              graphRef.current.changeData(updatedData);
-              animationFrame.current = requestAnimationFrame(animateBirths);
-            } else {
-              animationFrame.current = null;
-            }
-          };
-          animateBirths();
+          }
+        } else {
+          // For small graphs: use normal full-graph update
+          const g6Data = transformToG6Data(rawData);
+          graphRef.current.changeData(g6Data);
+          setStats(`${g6Data.nodes.length} nodes, ${g6Data.edges.length} edges`);
+          
+          // Restart animation loop if new nodes detected
+          if (newNodeFound && !animationFrame.current) {
+            const animateBirths = () => {
+              if (!graphRef.current || !latestDataRef.current) return;
+              
+              const now = Date.now();
+              let needsUpdate = false;
+              
+              birthTimestamps.current.forEach((birthTime) => {
+                const birthAge = (now - birthTime) / 1500;
+                if (birthAge < 1) {
+                  needsUpdate = true;
+                }
+              });
+              
+              if (needsUpdate) {
+                const updatedData = transformToG6Data(latestDataRef.current);
+                graphRef.current.changeData(updatedData);
+                animationFrame.current = requestAnimationFrame(animateBirths);
+              } else {
+                animationFrame.current = null;
+              }
+            };
+            animateBirths();
+          }
         }
-        
-        setStats(`${g6Data.nodes.length} nodes, ${g6Data.edges.length} edges`);
       } catch (err) {
         console.warn('Failed to update graph:', err);
       }
@@ -597,10 +750,15 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
             setFocusedNode(null);
             focusedNodeIdRef.current = null;
             
-            // Update visual effects to remove dimming
+            // Update visual effects to remove dimming (skip for large graphs)
             if (graphRef.current && latestDataRef.current) {
-              const updatedData = transformToG6Data(latestDataRef.current);
-              graphRef.current.changeData(updatedData);
+              const nodeCount = latestDataRef.current.nodes.length;
+              const isCullingActive = nodeCount >= 10000 && enableCullingRef.current;
+              
+              if (!isCullingActive) {
+                const updatedData = transformToG6Data(latestDataRef.current);
+                graphRef.current.changeData(updatedData);
+              }
             }
             
             // Reset camera zoom
