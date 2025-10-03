@@ -272,14 +272,14 @@ function renderGraph(
 ) {
   const nodeMap = new Map<string, Mesh>();
 
-  nodes.forEach((node) => {
+  nodes.forEach((node, index) => {
     const baseDiameter = (node.size || 10) * 6;
     const sphere = MeshBuilder.CreateIcoSphere(
       `node-${node.id}`,
       { 
         radius: baseDiameter,
         subdivisions: 4,
-        flat: false
+        flat: true
       },
       scene
     );
@@ -289,18 +289,21 @@ function renderGraph(
     const material = new StandardMaterial(`mat-${node.id}`, scene);
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
-    material.emissiveColor = new Color3(rgb.r * 8.0, rgb.g * 8.0, rgb.b * 8.0);
+    material.emissiveColor = new Color3(rgb.r * 7.0, rgb.g * 7.0, rgb.b * 7.0);
     material.diffuseColor = new Color3(rgb.r * 0.4, rgb.g * 0.4, rgb.b * 0.4);
     material.specularColor = new Color3(3, 3, 3);
     material.specularPower = 256;
     material.alpha = 0.9;
-    material.bumpTexture = new Texture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", scene);
+    
+    const normalMap = new Texture("https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight/grasslight-big-nm.jpg", scene);
+    material.bumpTexture = normalMap;
 
     sphere.material = material;
 
     scene.registerBeforeRender(() => {
       const time = performance.now() * 0.001;
-      sphere.scaling.setAll(1 + Math.sin(time * 2 + parseInt(node.id) * 0.5) * 0.15);
+      const phaseOffset = (index % 10) * 0.5;
+      sphere.scaling.setAll(1 + Math.sin(time * 2 + phaseOffset) * 0.15);
       sphere.rotation.y += 0.005;
     });
 

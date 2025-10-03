@@ -25,10 +25,10 @@ A high-performance, GPU-accelerated graph visualization engine optimized for lar
 
 #### Babylon.js 3-Tier Renderer System
 This system offers game engine-quality rendering with automatic selection based on device capabilities:
-1.  **WebGPU Babylon Renderer**: For high-end desktop GPUs, offering advanced effects like clustered Forward+ lighting, PBR materials, SSAO/SSR, volumetric effects, and HDR bloom.
-2.  **WebGL Babylon Renderer**: A WebGL 2.0 fallback with high-quality effects, including standard forward lighting, PBR-lite materials, and SSAO.
+1.  **WebGPU Babylon Renderer**: For high-end desktop GPUs, offering advanced effects like clustered Forward+ lighting, PBR materials, SSAO/SSR, volumetric effects, and HDR bloom with 1.5x intensity and kernel 128. Ultra-bright nodes (7x emissive multiplier) with 6x larger faceted icospheres, normal map textures, pulsing animations, and cinematic click-to-zoom. Edges removed for cleaner visuals. GlowLayer set to 3.5 intensity with exposure 2.2 for HDR neon aesthetics.
+2.  **WebGL Babylon Renderer**: A WebGL 2.0 fallback with high-quality effects, including standard forward lighting, PBR-lite materials, SSAO, and matching HDR node visuals (7x emissive, textured icospheres, animations, click-to-zoom).
 3.  **Three.js Fallback Renderer**: For legacy or mobile devices, providing WebGL 1.0 compatibility with basic lighting and post-processing bloom.
-The system automatically detects GPU capabilities and assigns tiers, with consistent visual styling (pure black backgrounds, HDR neon color palette) across all tiers.
+The system automatically detects GPU capabilities and assigns tiers, with consistent visual styling (pure black backgrounds, ultra-bright HDR neon nodes) across all tiers.
 
 #### Three.js Cinematic Renderer
 A Hollywood-grade 3D renderer featuring ACES Tone Mapping, volumetric god rays, anamorphic bloom, depth of field, chromatic aberration, and vignette effects. It employs four adaptive rendering paths based on camera distance and sun availability, with Web Workers powering force-directed layout calculations.

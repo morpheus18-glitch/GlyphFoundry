@@ -118,10 +118,10 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
         fillLight.diffuse = new Color3(1, 0, 1);
 
         const glowLayer = new GlowLayer('glow', scene, {
-          mainTextureFixedSize: 1024,
-          blurKernelSize: 64
+          mainTextureFixedSize: 2048,
+          blurKernelSize: 128
         });
-        glowLayer.intensity = 3.0;
+        glowLayer.intensity = 3.5;
 
         const defaultPipeline = new DefaultRenderingPipeline(
           'default',
@@ -133,15 +133,15 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
         defaultPipeline.fxaaEnabled = true;
         defaultPipeline.bloomEnabled = true;
         defaultPipeline.bloomThreshold = 0.1;
-        defaultPipeline.bloomWeight = 1.3;
-        defaultPipeline.bloomKernel = 64;
+        defaultPipeline.bloomWeight = 1.5;
+        defaultPipeline.bloomKernel = 128;
         defaultPipeline.bloomScale = 0.7;
 
         defaultPipeline.imageProcessingEnabled = true;
         if (defaultPipeline.imageProcessing) {
           defaultPipeline.imageProcessing.toneMappingEnabled = true;
           defaultPipeline.imageProcessing.toneMappingType = 1;
-          defaultPipeline.imageProcessing.exposure = 2.0;
+          defaultPipeline.imageProcessing.exposure = 2.2;
           defaultPipeline.imageProcessing.contrast = 1.4;
           defaultPipeline.imageProcessing.vignetteEnabled = true;
           defaultPipeline.imageProcessing.vignetteWeight = 1.8;
@@ -246,14 +246,14 @@ function renderGraph(
 ) {
   const nodeMap = new Map<string, Mesh>();
 
-  nodes.forEach((node) => {
+  nodes.forEach((node, index) => {
     const baseDiameter = (node.size || 10) * 6;
     const sphere = MeshBuilder.CreateIcoSphere(
       `node-${node.id}`,
       { 
         radius: baseDiameter,
-        subdivisions: 3,
-        flat: false
+        subdivisions: 4,
+        flat: true
       },
       scene
     );
@@ -268,13 +268,16 @@ function renderGraph(
     material.specularColor = new Color3(3, 3, 3);
     material.specularPower = 256;
     material.alpha = 0.9;
-    material.bumpTexture = new Texture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", scene);
+    
+    const normalMap = new Texture("https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight/grasslight-big-nm.jpg", scene);
+    material.bumpTexture = normalMap;
 
     sphere.material = material;
 
     scene.registerBeforeRender(() => {
       const time = performance.now() * 0.001;
-      sphere.scaling.setAll(1 + Math.sin(time * 2 + parseInt(node.id) * 0.5) * 0.15);
+      const phaseOffset = (index % 10) * 0.5;
+      sphere.scaling.setAll(1 + Math.sin(time * 2 + phaseOffset) * 0.15);
       sphere.rotation.y += 0.005;
     });
 
