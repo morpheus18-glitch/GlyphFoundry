@@ -460,19 +460,35 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           setStats(`${initialData.nodes.length} nodes, ${initialData.edges.length} edges`);
         }
 
+        // Mobile ultra-lightweight mode: Force Canvas2D and disable all effects
+        const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobileDevice) {
+          console.log('📱 Mobile ultra-lightweight mode: Canvas2D, no effects, simplified layout');
+        }
+        
         // Create G6 graph instance
         const graph = new Graph({
           container: containerRef.current!,
           width: containerRef.current!.clientWidth,
           height: containerRef.current!.clientHeight,
-          renderer: () => hasGPU.current ? new WebGLRenderer() : new CanvasRenderer(),
+          renderer: () => isMobileDevice ? new CanvasRenderer() : (hasGPU.current ? new WebGLRenderer() : new CanvasRenderer()),
           behaviors: [
             'drag-canvas',
             'zoom-canvas',
             'drag-element',
             'click-select'
           ],
-          layout: {
+          layout: isMobileDevice ? {
+            type: 'force',
+            animated: false, // Disable animations on mobile
+            preventOverlap: false, // Disable collision detection
+            nodeSize: 20,
+            linkDistance: 100,
+            nodeStrength: -20,
+            edgeStrength: 0.05,
+            collideStrength: 0
+          } : {
             type: 'force',
             animated: !wasmPhysics.isReady,
             preventOverlap: true,
@@ -484,7 +500,13 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
           },
           data: initialData,
           node: {
-            style: {
+            style: isMobileDevice ? {
+              size: 8, // Smaller nodes on mobile
+              fill: '#00ffff',
+              stroke: '#00ffff',
+              lineWidth: 1,
+              shadowBlur: 0 // No shadows on mobile
+            } : {
               size: 10,
               fill: '#00ffff',
               stroke: '#00ffff',
@@ -510,27 +532,30 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         // Store graph ref BEFORE any physics initialization
         graphRef.current = graph;
 
-        // Initialize bloom post-processing
-        // Get G6's canvas element (WebGL renderer creates a canvas element)
-        setTimeout(() => {
-          const canvasElement = containerRef.current?.querySelector('canvas');
-          if (canvasElement && hasGPU.current) {
-            const bloomConfig = BLOOM_CONFIGS[currentTier] || BLOOM_CONFIGS.standard;
-            bloomProcessorRef.current = new BloomPostProcessor(canvasElement, bloomConfig);
-            console.log(`✨ Bloom post-processing initialized (tier: ${currentTier})`);
-            
-            // Start bloom render loop
-            const renderBloom = () => {
-              if (bloomProcessorRef.current) {
-                bloomProcessorRef.current.render();
-              }
-              requestAnimationFrame(renderBloom);
-            };
-            renderBloom();
-          } else {
-            console.warn('⚠️ Bloom disabled: canvas not found or no GPU');
-          }
-        }, 100); // Small delay to ensure canvas is in DOM
+        // Initialize bloom post-processing (DESKTOP ONLY - skip on mobile)
+        if (!isMobileDevice) {
+          setTimeout(() => {
+            const canvasElement = containerRef.current?.querySelector('canvas');
+            if (canvasElement && hasGPU.current) {
+              const bloomConfig = BLOOM_CONFIGS[currentTier] || BLOOM_CONFIGS.standard;
+              bloomProcessorRef.current = new BloomPostProcessor(canvasElement, bloomConfig);
+              console.log(`✨ Bloom post-processing initialized (tier: ${currentTier})`);
+              
+              // Start bloom render loop
+              const renderBloom = () => {
+                if (bloomProcessorRef.current) {
+                  bloomProcessorRef.current.render();
+                }
+                requestAnimationFrame(renderBloom);
+              };
+              renderBloom();
+            } else {
+              console.warn('⚠️ Bloom disabled: canvas not found or no GPU');
+            }
+          }, 100);
+        } else {
+          console.log('📱 Bloom disabled on mobile for performance');
+        }
 
         // Track viewport changes for culling
         const updateViewport = () => {
@@ -739,8 +764,16 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     };
   }, []);
 
-  // Poll for updates every 3 seconds and track new nodes
+  // Poll for updates every 3 seconds and track new nodes (DISABLED ON MOBILE)
   useEffect(() => {
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    // Skip polling on mobile to prevent performance issues
+    if (isMobileDevice) {
+      console.log('📱 Polling disabled on mobile for performance');
+      return;
+    }
+    
     const interval = setInterval(async () => {
       if (!graphRef.current) return;
       

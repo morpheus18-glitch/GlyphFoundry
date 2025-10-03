@@ -111,8 +111,8 @@ export const RENDERING_TIERS: Record<QualityTier, RenderingConfig> = {
     displayName: 'Standard',
     description: 'Optimized for mobile devices',
     
-    maxNodes: 2000,
-    maxEdges: 6000,
+    maxNodes: 100, // Ultra-low for mobile compatibility
+    maxEdges: 300,
     
     enableWebGL: true,
     enableMSAA: false,
@@ -146,8 +146,8 @@ export const RENDERING_TIERS: Record<QualityTier, RenderingConfig> = {
     displayName: 'Eco',
     description: 'Maximum performance - Minimal effects',
     
-    maxNodes: 1000,
-    maxEdges: 3000,
+    maxNodes: 50, // Extreme low for mobile fallback
+    maxEdges: 150,
     
     enableWebGL: true,
     enableMSAA: false,
