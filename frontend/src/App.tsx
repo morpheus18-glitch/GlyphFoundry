@@ -89,8 +89,9 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let retryTimeout: NodeJS.Timeout | null = null;
 
-    const fetchData = async () => {
+    const fetchData = async (retryCount = 0) => {
       try {
         setLoading(true);
         setError(null);
@@ -125,7 +126,17 @@ export default function App() {
         if (controller.signal.aborted) {
           return;
         }
-        setError((err as Error)?.message ?? "Failed to load graph");
+        
+        const errorMessage = (err as Error)?.message ?? "Failed to load graph";
+        const isConnectionError = errorMessage.includes('fetch') || errorMessage.includes('network');
+        
+        if (isConnectionError && retryCount < 5) {
+          const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+          console.log(`Backend not ready, retrying in ${retryDelay}ms... (attempt ${retryCount + 1}/5)`);
+          retryTimeout = setTimeout(() => fetchData(retryCount + 1), retryDelay);
+        } else {
+          setError(errorMessage);
+        }
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -135,7 +146,10 @@ export default function App() {
 
     fetchData();
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
   }, [headers, windowMinutes, limitNodes, limitEdges, refreshToken]);
 
   const handleNodeSelect = useCallback((nodeId: string) => {
