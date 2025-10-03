@@ -61,6 +61,10 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
   const sceneRef = useRef<Scene | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const handleKeyDownRef = useRef<((e: KeyboardEvent) => void) | null>(null);
+  const handleResizeRef = useRef<(() => void) | null>(null);
+  const handlePointerDownRef = useRef<((evt: any, pickResult: any) => void) | null>(null);
 
   useEffect(() => {
     const initWebGPU = async () => {
@@ -108,7 +112,7 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
           scene
         );
         scene.environmentTexture = hdrTexture;
-        scene.environmentIntensity = 0.8;
+        scene.environmentIntensity = 1.2;
 
         const camera = new ArcRotateCamera(
           'camera',
@@ -138,6 +142,57 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         
         camera.useAutoRotationBehavior = false;
         camera.checkCollisions = false;
+
+        const resetCamera = () => {
+          camera.setTarget(Vector3.Zero());
+          Animation.CreateAndStartAnimation(
+            'cameraResetRadius',
+            camera,
+            'radius',
+            60,
+            30,
+            camera.radius,
+            1200,
+            0
+          );
+          Animation.CreateAndStartAnimation(
+            'cameraResetAlpha',
+            camera,
+            'alpha',
+            60,
+            30,
+            camera.alpha,
+            Math.PI / 4,
+            0
+          );
+          Animation.CreateAndStartAnimation(
+            'cameraResetBeta',
+            camera,
+            'beta',
+            60,
+            30,
+            camera.beta,
+            Math.PI / 3,
+            0
+          );
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            resetCamera();
+          }
+        };
+        handleKeyDownRef.current = handleKeyDown;
+
+        const handlePointerDown = (evt: any, pickResult: any) => {
+          if (!pickResult.hit && evt.button === 0 && evt.detail === 2) {
+            resetCamera();
+          }
+        };
+        handlePointerDownRef.current = handlePointerDown;
+
+        window.addEventListener('keydown', handleKeyDown);
+        scene.onPointerDown = handlePointerDown;
 
         const ambientLight = new HemisphericLight(
           'ambient',
@@ -170,9 +225,9 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
 
         const glowLayer = new GlowLayer('glow', scene, {
           mainTextureFixedSize: 2048,
-          blurKernelSize: 96
+          blurKernelSize: 128
         });
-        glowLayer.intensity = 1.4;
+        glowLayer.intensity = 3.5;
 
         const defaultPipeline = new DefaultRenderingPipeline(
           'default',
@@ -183,10 +238,10 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         defaultPipeline.samples = 4;
         defaultPipeline.fxaaEnabled = true;
         defaultPipeline.bloomEnabled = true;
-        defaultPipeline.bloomThreshold = 0.4;
-        defaultPipeline.bloomWeight = 0.7;
-        defaultPipeline.bloomKernel = 96;
-        defaultPipeline.bloomScale = 0.6;
+        defaultPipeline.bloomThreshold = 0.2;
+        defaultPipeline.bloomWeight = 1.5;
+        defaultPipeline.bloomKernel = 128;
+        defaultPipeline.bloomScale = 0.8;
 
         defaultPipeline.chromaticAberrationEnabled = true;
         if (defaultPipeline.chromaticAberration) {
@@ -222,9 +277,12 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
           scene.render();
         });
 
-        window.addEventListener('resize', () => {
+        const handleResize = () => {
           engine.resize();
-        });
+        };
+        handleResizeRef.current = handleResize;
+        
+        window.addEventListener('resize', handleResize);
 
         setIsReady(true);
         console.log('✅ WebGPU Babylon renderer initialized successfully');
@@ -239,7 +297,17 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
     initWebGPU();
 
     return () => {
+      if (handleKeyDownRef.current) {
+        window.removeEventListener('keydown', handleKeyDownRef.current);
+        handleKeyDownRef.current = null;
+      }
+      if (handleResizeRef.current) {
+        window.removeEventListener('resize', handleResizeRef.current);
+        handleResizeRef.current = null;
+      }
       if (sceneRef.current) {
+        sceneRef.current.onPointerDown = null;
+        handlePointerDownRef.current = null;
         sceneRef.current.dispose();
       }
       if (engineRef.current) {
@@ -303,7 +371,7 @@ function renderGraph(
   const nodeMap = new Map<string, Mesh>();
 
   nodes.forEach((node, index) => {
-    const baseDiameter = (node.size || 10) * 6;
+    const baseDiameter = (node.size || 10) * 18;
     const sphere = MeshBuilder.CreateIcoSphere(
       `node-${node.id}`,
       { 
@@ -320,23 +388,18 @@ function renderGraph(
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
     
-    material.albedoColor = new Color3(rgb.r, rgb.g, rgb.b);
-    material.emissiveColor = new Color3(rgb.r * 4, rgb.g * 4, rgb.b * 4);
-    material.emissiveIntensity = 1.8;
+    material.albedoColor = new Color3(rgb.r * 0.5, rgb.g * 0.5, rgb.b * 0.5);
+    material.emissiveColor = new Color3(rgb.r * 8, rgb.g * 8, rgb.b * 8);
+    material.emissiveIntensity = 3.5;
     
-    material.metallic = 0.9;
-    material.roughness = 0.2;
+    material.metallic = 0.95;
+    material.roughness = 0.15;
     
-    const normalMap = new Texture("https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight/grasslight-big-nm.jpg", scene);
-    material.bumpTexture = normalMap;
-    material.bumpTexture.level = 1.2;
+    material.directIntensity = 2.0;
+    material.environmentIntensity = 1.2;
+    material.specularIntensity = 1.8;
     
-    material.directIntensity = 1.5;
-    material.environmentIntensity = 0.8;
-    material.specularIntensity = 1.2;
-    
-    material.alpha = 0.98;
-    material.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
+    material.alpha = 1.0;
 
     sphere.material = material;
 
