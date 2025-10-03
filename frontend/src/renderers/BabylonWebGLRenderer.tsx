@@ -15,7 +15,9 @@ import {
   SSAO2RenderingPipeline,
   Mesh,
   ActionManager,
-  ExecuteCodeAction
+  ExecuteCodeAction,
+  Texture,
+  Animation
 } from '@babylonjs/core';
 
 interface GraphNode {
@@ -245,9 +247,14 @@ function renderGraph(
   const nodeMap = new Map<string, Mesh>();
 
   nodes.forEach((node) => {
-    const sphere = MeshBuilder.CreateSphere(
+    const baseDiameter = (node.size || 10) * 6;
+    const sphere = MeshBuilder.CreateIcoSphere(
       `node-${node.id}`,
-      { diameter: (node.size || 10) * 2, segments: 12 },
+      { 
+        radius: baseDiameter,
+        subdivisions: 3,
+        flat: false
+      },
       scene
     );
 
@@ -256,20 +263,44 @@ function renderGraph(
     const material = new StandardMaterial(`mat-${node.id}`, scene);
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
-    material.emissiveColor = new Color3(rgb.r * 4.5, rgb.g * 4.5, rgb.b * 4.5);
-    material.diffuseColor = new Color3(rgb.r * 0.3, rgb.g * 0.3, rgb.b * 0.3);
-    material.specularColor = new Color3(2, 2, 2);
-    material.specularPower = 128;
-    material.alpha = 0.95;
+    material.emissiveColor = new Color3(rgb.r * 7.0, rgb.g * 7.0, rgb.b * 7.0);
+    material.diffuseColor = new Color3(rgb.r * 0.4, rgb.g * 0.4, rgb.b * 0.4);
+    material.specularColor = new Color3(3, 3, 3);
+    material.specularPower = 256;
+    material.alpha = 0.9;
+    material.bumpTexture = new Texture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", scene);
 
     sphere.material = material;
+
+    scene.registerBeforeRender(() => {
+      const time = performance.now() * 0.001;
+      sphere.scaling.setAll(1 + Math.sin(time * 2 + parseInt(node.id) * 0.5) * 0.15);
+      sphere.rotation.y += 0.005;
+    });
 
     if (onNodeClick) {
       sphere.actionManager = new ActionManager(scene);
       sphere.actionManager.registerAction(
         new ExecuteCodeAction(
           ActionManager.OnPickTrigger,
-          () => onNodeClick(node.id)
+          () => {
+            const camera = scene.activeCamera as ArcRotateCamera;
+            if (camera) {
+              camera.setTarget(sphere.position);
+              const distance = baseDiameter * 3;
+              Animation.CreateAndStartAnimation(
+                'cameraZoom',
+                camera,
+                'radius',
+                60,
+                30,
+                camera.radius,
+                distance,
+                0
+              );
+            }
+            onNodeClick(node.id);
+          }
         )
       );
     }
@@ -277,23 +308,6 @@ function renderGraph(
     nodeMap.set(node.id, sphere);
   });
 
-  edges.forEach((edge) => {
-    const sourceNode = nodeMap.get(edge.source);
-    const targetNode = nodeMap.get(edge.target);
-
-    if (sourceNode && targetNode) {
-      const line = MeshBuilder.CreateLines(
-        `edge-${edge.source}-${edge.target}`,
-        {
-          points: [sourceNode.position, targetNode.position]
-        },
-        scene
-      );
-
-      line.color = new Color3(0, 2.5, 2.5);
-      line.alpha = 0.5;
-    }
-  });
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
