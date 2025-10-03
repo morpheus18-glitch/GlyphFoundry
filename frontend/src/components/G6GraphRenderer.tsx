@@ -94,6 +94,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const animationFrame = useRef<number | null>(null);
   const latestDataRef = useRef<GraphPayload | null>(null);
   const enableCullingRef = useRef<boolean>(true); // Toggle for 1M node mode
+  const [dataVersion, setDataVersion] = useState(0); // Triggers WASM physics on data changes
 
   // WASM Physics Engine for faster layout calculation
   const wasmPhysics = useWasmPhysics();
@@ -382,6 +383,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         const rawData = await fetchGraphData();
         latestDataRef.current = rawData;
         setGraphData(rawData); // Update state to trigger QuadTree rebuild
+        setDataVersion(v => v + 1); // Trigger WASM physics refresh
         const nodeCount = rawData.nodes.length;
         
         // Mark all initial nodes as seen and set birth timestamps
@@ -667,6 +669,7 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         const rawData = await fetchGraphData();
         latestDataRef.current = rawData;
         setGraphData(rawData); // Update state to trigger QuadTree rebuild
+        setDataVersion(v => v + 1); // Trigger WASM physics refresh
         const nodeCount = rawData.nodes.length;
         
         // Detect new nodes and set their birth timestamps
@@ -833,8 +836,21 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       });
     };
 
+    // Cancel any existing physics loop before starting new one
+    if (physicsTickRef.current !== null) {
+      cancelAnimationFrame(physicsTickRef.current);
+      physicsTickRef.current = null;
+    }
+
     startPhysicsLoop();
-  }, [wasmPhysics.isReady, wasmPhysics]);
+
+    return () => {
+      if (physicsTickRef.current !== null) {
+        cancelAnimationFrame(physicsTickRef.current);
+        physicsTickRef.current = null;
+      }
+    };
+  }, [wasmPhysics.isReady, wasmPhysics, dataVersion]);
 
   return (
     <div className={`relative w-full h-full bg-black ${className}`}>

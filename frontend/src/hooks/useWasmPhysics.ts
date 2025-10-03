@@ -43,6 +43,11 @@ export function useWasmPhysics(): WasmPhysicsHook {
         
         if (!mounted) return;
 
+        // Initialize the WASM module (loads the binary)
+        await wasmModule.default();
+        
+        if (!mounted) return;
+
         // Create physics engine instance
         const engine = new wasmModule.PhysicsEngine();
         engineRef.current = engine;
