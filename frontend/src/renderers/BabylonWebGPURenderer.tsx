@@ -388,9 +388,9 @@ function renderGraph(
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
     
-    material.albedoColor = new Color3(rgb.r * 0.5, rgb.g * 0.5, rgb.b * 0.5);
-    material.emissiveColor = new Color3(rgb.r * 8, rgb.g * 8, rgb.b * 8);
-    material.emissiveIntensity = 3.5;
+    material.albedoColor = new Color3(rgb.r * 0.8, rgb.g * 0.8, rgb.b * 0.8);
+    material.emissiveColor = new Color3(rgb.r * 2.5, rgb.g * 2.5, rgb.b * 2.5);
+    material.emissiveIntensity = 1.8;
     
     material.metallic = 0.95;
     material.roughness = 0.15;

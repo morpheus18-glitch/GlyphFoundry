@@ -6,11 +6,60 @@ from sqlalchemy import text, and_, or_
 from pydantic import BaseModel, Field
 import uuid
 from datetime import datetime
+import hashlib
+import colorsys
 
 from ..db import get_db
 from ..vector_service import vector_service
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge-graph"])
+
+# Color palettes for different node types
+NODE_TYPE_PALETTES = {
+    "message": {"hue": 180, "sat_range": (0.6, 0.9), "val_range": (0.7, 0.95)},  # Cyan family
+    "entity": {"hue": 300, "sat_range": (0.65, 0.95), "val_range": (0.65, 0.9)},  # Magenta family
+    "event": {"hue": 60, "sat_range": (0.7, 0.95), "val_range": (0.75, 0.95)},   # Yellow family
+    "concept": {"hue": 270, "sat_range": (0.6, 0.85), "val_range": (0.7, 0.9)},  # Purple family
+    "document": {"hue": 30, "sat_range": (0.65, 0.9), "val_range": (0.7, 0.95)}, # Orange family
+    "metric": {"hue": 120, "sat_range": (0.6, 0.9), "val_range": (0.65, 0.9)},   # Green family
+    "default": {"hue": 200, "sat_range": (0.6, 0.85), "val_range": (0.7, 0.9)}   # Blue family
+}
+
+def generate_node_color(
+    kind: str,
+    node_id: str,
+    created_at: datetime,
+    connection_strength: float = 0.0,
+    importance_score: float = 0.5
+) -> str:
+    """Generate a unique color for a node based on its properties."""
+    
+    # Get base palette for this node type
+    palette = NODE_TYPE_PALETTES.get(kind, NODE_TYPE_PALETTES["default"])
+    base_hue = palette["hue"]
+    
+    # Add time-based variation to hue (±30 degrees)
+    time_hash = int(hashlib.md5(str(created_at).encode()).hexdigest()[:8], 16)
+    hue_variation = (time_hash % 60) - 30
+    hue = (base_hue + hue_variation) % 360
+    
+    # ID-based saturation variation within range
+    id_hash = int(hashlib.md5(node_id.encode()).hexdigest()[:8], 16)
+    sat_min, sat_max = palette["sat_range"]
+    saturation = sat_min + (id_hash % 100) / 100.0 * (sat_max - sat_min)
+    
+    # Connection strength affects saturation (more connected = more saturated)
+    saturation = min(1.0, saturation + connection_strength * 0.15)
+    
+    # Importance affects value/brightness
+    val_min, val_max = palette["val_range"]
+    value = val_min + importance_score * (val_max - val_min)
+    
+    # Convert HSV to RGB
+    r, g, b = colorsys.hsv_to_rgb(hue / 360.0, saturation, value)
+    
+    # Return as hex color
+    return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
 
 # Pydantic models for requests/responses
 class NodeCreate(BaseModel):
@@ -106,14 +155,16 @@ async def create_node(
     
     # Create node with all required fields populated
     import json
+    
+    # First, insert the node and let Postgres generate the ID
     sql = text("""
         INSERT INTO nodes_v2 (
             tenant_id, kind, name, summary, content, metadata,
-            embedding_384, pos_x, pos_y, pos_z, color, size, 
+            embedding_384, pos_x, pos_y, pos_z, size, 
             opacity, glow_intensity, importance_score, connection_strength
         ) VALUES (
             :tenant_id, CAST(:kind AS node_kind_enum), :name, :summary, :content, CAST(:metadata AS jsonb),
-            CAST(:embedding_384 AS vector), :pos_x, :pos_y, :pos_z, :color, :size,
+            CAST(:embedding_384 AS vector), :pos_x, :pos_y, :pos_z, :size,
             :opacity, :glow_intensity, :importance_score, :connection_strength
         ) RETURNING *
     """)
@@ -129,13 +180,33 @@ async def create_node(
         'pos_x': 0.0,  # Default to origin, will be positioned by layout algorithm
         'pos_y': 0.0,
         'pos_z': 0.0,
-        'color': node.color,
         'size': node.size,
         'opacity': 1.0,  # Default opacity
         'glow_intensity': node.glow_intensity,
-        'importance_score': 0.5,  # Default importance
-        'connection_strength': 0.0  # Will be updated by autonomous learning
+        'importance_score': 0.5,
+        'connection_strength': 0.0
     })
+    
+    new_node = result.fetchone()
+    
+    # Now generate and update the color based on the created node's properties
+    generated_color = generate_node_color(
+        kind=new_node.kind,
+        node_id=str(new_node.id),
+        created_at=new_node.created_at,
+        connection_strength=new_node.connection_strength or 0.0,
+        importance_score=new_node.importance_score or 0.5
+    )
+    
+    # Update the node with the generated color
+    update_sql = text("""
+        UPDATE nodes_v2 
+        SET color = :color 
+        WHERE id = :id
+        RETURNING *
+    """)
+    
+    result = db.execute(update_sql, {'color': generated_color, 'id': new_node.id})
     
     new_node = result.fetchone()
     db.commit()
@@ -361,4 +432,48 @@ async def trigger_learning(
         "node_id": node_id,
         "new_connections": len(new_edges),
         "edge_ids": new_edges
+    }
+
+@router.post("/tenants/{tenant_id}/update-colors")
+async def update_node_colors(
+    tenant_id: str,
+    db: Session = Depends(get_db)
+):
+    """Update all existing nodes with generated colors based on their properties."""
+    
+    # Fetch all nodes for this tenant
+    sql = text("""
+        SELECT id, kind, created_at, importance_score, connection_strength
+        FROM nodes_v2
+        WHERE tenant_id = :tenant_id
+    """)
+    
+    nodes = db.execute(sql, {'tenant_id': tenant_id}).fetchall()
+    
+    updated_count = 0
+    for node in nodes:
+        # Generate color based on node properties
+        new_color = generate_node_color(
+            kind=node.kind,
+            node_id=str(node.id),
+            created_at=node.created_at,
+            connection_strength=node.connection_strength or 0.0,
+            importance_score=node.importance_score or 0.5
+        )
+        
+        # Update the node with the new color
+        update_sql = text("""
+            UPDATE nodes_v2 
+            SET color = :color 
+            WHERE id = :id
+        """)
+        db.execute(update_sql, {'color': new_color, 'id': node.id})
+        updated_count += 1
+    
+    db.commit()
+    
+    return {
+        "tenant_id": tenant_id,
+        "updated_nodes": updated_count,
+        "message": f"Successfully updated {updated_count} nodes with generated colors"
     }
