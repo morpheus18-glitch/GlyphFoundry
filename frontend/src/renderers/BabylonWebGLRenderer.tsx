@@ -84,15 +84,19 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
           'camera',
           -Math.PI / 2,
           Math.PI / 2.5,
-          500,
+          1200,
           Vector3.Zero(),
           scene
         );
         camera.attachControl(canvasRef.current, true);
-        camera.lowerRadiusLimit = 50;
-        camera.upperRadiusLimit = 2000;
-        camera.wheelPrecision = 50;
-        camera.pinchPrecision = 50;
+        camera.lowerRadiusLimit = 200;
+        camera.upperRadiusLimit = 8000;
+        camera.wheelPrecision = 15;
+        camera.pinchPrecision = 15;
+        camera.panningSensibility = 100;
+        camera.inertia = 0.9;
+        camera.angularSensibilityX = 1000;
+        camera.angularSensibilityY = 1000;
 
         const ambientLight = new HemisphericLight(
           'ambient',
@@ -209,7 +213,7 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
       <canvas
         ref={canvasRef}
         className="w-full h-full"
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: 'pan-y' }}
       />
       {!isReady && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80">
@@ -228,8 +232,8 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
         </div>
       )}
       {isReady && (
-        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-cyan-500/30">
-          <div className="text-cyan-400 text-sm font-mono">
+        <div className="absolute bottom-4 right-4 md:top-4 md:left-4 md:bottom-auto md:right-auto bg-black/60 backdrop-blur px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-cyan-500/30">
+          <div className="text-cyan-400 text-xs md:text-sm font-mono">
             WebGL | {nodes.length} nodes | {edges.length} edges
           </div>
         </div>
@@ -290,7 +294,7 @@ function renderGraph(
             const camera = scene.activeCamera as ArcRotateCamera;
             if (camera) {
               camera.setTarget(sphere.position);
-              const distance = baseDiameter * 3;
+              const distance = Math.max(baseDiameter * 8, 300);
               Animation.CreateAndStartAnimation(
                 'cameraZoom',
                 camera,
