@@ -823,6 +823,14 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
 
   // Separate effect to initialize WASM physics when ready
   useEffect(() => {
+    // Skip WASM physics entirely on mobile - use G6's built-in layout instead
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobileDevice) {
+      console.log('📱 Mobile device detected - skipping WASM physics, using G6 built-in layout');
+      return;
+    }
+    
     if (!wasmPhysics.isReady || !graphRef.current || !latestDataRef.current) {
       return;
     }
@@ -862,12 +870,13 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       0.5     // theta (Barnes-Hut approximation)
     );
 
-    // Physics tick loop
+    // Physics tick loop (desktop only now)
     let iterations = 0;
     const maxIterations = 100;
+    
     const startPhysicsLoop = () => {
       if (iterations >= maxIterations || !graphRef.current) {
-        console.log(`✅ WASM physics completed: ${iterations} iterations`);
+        console.log(`✅ WASM physics completed: ${iterations} iterations (desktop mode)`);
         return;
       }
 
@@ -893,12 +902,11 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
 
         iterations++;
         
-        // Log performance every 20 iterations
+        // Log performance (desktop only - every 20 iterations)
         if (iterations % 20 === 0) {
-          const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          const target = isMobileDevice ? 25 : 16;
+          const target = 16; // 16ms target for desktop
           const status = tickTime <= target ? '✅' : '⚠️';
-          console.log(`${status} WASM physics tick ${iterations}: ${tickTime.toFixed(2)}ms (target: ≤${target}ms)`);
+          console.log(`${status} WASM physics tick ${iterations}/${maxIterations}: ${tickTime.toFixed(2)}ms (target: ≤${target}ms)`);
         }
 
         // Continue loop
