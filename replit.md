@@ -53,6 +53,8 @@ The platform features a high-performance G6 5.0 WebGL renderer as the primary kn
 - ✅ **Adaptive Rendering System**: 4-tier quality system (Ultra → High → Standard → Eco) with automatic FPS-based tier switching
   - Mobile starts at "Standard" tier (2k nodes, bloom only, ≥30 FPS target)
   - Desktop starts at "High" tier (5k nodes, MSAA 4x, bloom + shadows, ≥45 FPS target)
+  - **10-second grace period** prevents tier downgrades during initial load (fixes mobile freeze issue)
+  - Mobile tier threshold: ≥25 FPS for Standard tier (more forgiving than desktop)
   - Automatic downgrade after 20 consecutive low-FPS frames (2s cooldown)
   - Automatic upgrade after stable performance (5s cooldown)
   - Real-time performance HUD with FPS, frame time, tier status, and manual override

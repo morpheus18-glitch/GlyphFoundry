@@ -43,12 +43,14 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
   const rafIdRef = useRef<number | undefined>(undefined);
   const consecutiveDropsRef = useRef<number>(0);
   const tierChangeTimerRef = useRef<number>(0);
+  const initializationTimeRef = useRef<number>(Date.now());
 
   const targetFpsThreshold = isMobile ? 30 : 45;
 
   const determineTier = useCallback((avgFps: number): QualityTier => {
     if (isMobile) {
-      if (avgFps >= 30) return 'standard';
+      // More forgiving threshold: Stay in standard unless FPS drops significantly
+      if (avgFps >= 25) return 'standard';  // Lowered from 30 to 25
       return 'eco';
     } else {
       if (avgFps >= 55) return 'ultra';
@@ -91,21 +93,34 @@ export function usePerformanceMonitor(options: PerformanceMonitorOptions = {}) {
     const now2 = Date.now();
     const newTier = determineTier(avgFps);
     
+    // Grace period: Prevent downgrades during first 10 seconds (allows graph to load/stabilize)
+    const gracePeriod = 10000; // 10 seconds
+    const isInGracePeriod = now2 - initializationTimeRef.current < gracePeriod;
+    
     if (newTier !== currentTier) {
       const tierOrder: QualityTier[] = ['ultra', 'high', 'standard', 'eco'];
       const currentIndex = tierOrder.indexOf(currentTier);
       const newIndex = tierOrder.indexOf(newTier);
       
+      // Downgrading (worse performance)
       if (newIndex > currentIndex) {
-        consecutiveDropsRef.current++;
-        
-        if (consecutiveDropsRef.current >= 20 && now2 - tierChangeTimerRef.current > 2000) {
-          setCurrentTier(newTier);
-          tierChangeTimerRef.current = now2;
+        // Skip downgrades during grace period
+        if (isInGracePeriod) {
+          console.log(`⏸️ Grace period active - preventing downgrade to ${newTier} (${Math.round((gracePeriod - (now2 - initializationTimeRef.current)) / 1000)}s remaining)`);
           consecutiveDropsRef.current = 0;
-          onTierChange?.(newTier);
+        } else {
+          consecutiveDropsRef.current++;
+          
+          if (consecutiveDropsRef.current >= 20 && now2 - tierChangeTimerRef.current > 2000) {
+            setCurrentTier(newTier);
+            tierChangeTimerRef.current = now2;
+            consecutiveDropsRef.current = 0;
+            onTierChange?.(newTier);
+          }
         }
-      } else if (newIndex < currentIndex && isStable && now2 - tierChangeTimerRef.current > 5000) {
+      } 
+      // Upgrading (better performance) - allow anytime
+      else if (newIndex < currentIndex && isStable && now2 - tierChangeTimerRef.current > 5000) {
         setCurrentTier(newTier);
         tierChangeTimerRef.current = now2;
         consecutiveDropsRef.current = 0;

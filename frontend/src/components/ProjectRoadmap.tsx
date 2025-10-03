@@ -28,7 +28,7 @@ const ROADMAP_DATA: Phase[] = [
     goal: '50k-100k nodes at 45+ FPS desktop, 30+ FPS mobile',
     duration: '5-7 weeks',
     status: 'in_progress',
-    completion: 88,
+    completion: 94,
     tasks: [
       {
         id: 'task1',
@@ -97,11 +97,12 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task8',
         title: 'Cross-Device Testing & Optimization',
-        status: 'pending',
+        status: 'in_progress',
         duration: '5 days',
         dependencies: ['task2', 'task3', 'task4', 'task5', 'task6', 'task7'],
         complexity: 'medium',
-        target: 'iOS/Android/Desktop validation'
+        target: 'iOS/Android/Desktop validation',
+        mobileImpact: 'Fixed mobile freeze: 10s grace period + 25 FPS threshold'
       }
     ]
   },
