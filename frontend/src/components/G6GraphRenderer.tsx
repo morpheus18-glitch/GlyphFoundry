@@ -8,6 +8,7 @@ import { getConfigForTier } from '../config/renderingTiers';
 import { QualityTierIndicator } from './QualityTierIndicator';
 import { FocusedNodeView } from './FocusedNodeView';
 import { useViewportCulling } from '../hooks/useViewportCulling';
+import { useViewportCullingWorker } from '../hooks/useViewportCullingWorker';
 import { calculateViewportBounds, type ViewportInfo } from '../utils/viewportCulling';
 
 // Types matching backend API
@@ -104,10 +105,13 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   });
 
   // Viewport culling system (for massive graphs)
-  const { cullToViewport, quadTreeSize } = useViewportCulling(
-    graphData.nodes,
-    graphData.edges
-  );
+  // Use worker-based culling for better performance with large datasets
+  const USE_WORKER_CULLING = graphData.nodes.length >= 50000;
+  
+  const syncCulling = useViewportCulling(graphData.nodes, graphData.edges);
+  const workerCulling = useViewportCullingWorker(graphData.nodes, graphData.edges);
+  
+  const { cullToViewport, quadTreeSize } = USE_WORKER_CULLING ? workerCulling : syncCulling;
 
   // Mobile gesture controls
   useGraphGestures(containerRef, graphRef, {
@@ -328,30 +332,36 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     // Only apply culling for graphs with > 10k nodes
     if (nodeCount < 10000 || !enableCullingRef.current) return;
 
-    const culled = cullToViewport(viewportInfo, 300);
-    
-    // Update stats regardless of visible count
-    setStats(
-      `${culled.stats.visible}/${culled.stats.total} nodes visible | ` +
-      `${culled.visibleEdges.length} edges | ` +
-      `LOD: ${culled.stats.lodLevel} | ` +
-      `Culled: ${culled.stats.culled}`
-    );
-    
-    // Always update graph to match culled viewport (even if empty)
-    const g6Data = transformToG6Data({
-      nodes: culled.visibleNodes,
-      edges: culled.visibleEdges,
-      stats: latestDataRef.current.stats
-    });
+    const applyCulling = async () => {
+      // Handle both sync and async culling (worker returns Promise)
+      const culled = await Promise.resolve(cullToViewport(viewportInfo, 300));
+      
+      // Update stats regardless of visible count
+      setStats(
+        `${culled.stats.visible}/${culled.stats.total} nodes visible | ` +
+        `${culled.visibleEdges.length} edges | ` +
+        `LOD: ${culled.stats.lodLevel} | ` +
+        `Culled: ${culled.stats.culled}` +
+        (culled.stats.cullTimeMs ? ` | ${culled.stats.cullTimeMs}ms` : '')
+      );
+      
+      // Always update graph to match culled viewport (even if empty)
+      const g6Data = transformToG6Data({
+        nodes: culled.visibleNodes,
+        edges: culled.visibleEdges,
+        stats: latestDataRef.current!.stats
+      });
 
-    (graphRef.current as any).changeData?.(g6Data);
-    
-    if (culled.visibleNodes.length > 0) {
-      console.log(`🔍 Viewport culling: ${culled.stats.visible}/${culled.stats.total} nodes, LOD ${culled.stats.lodLevel}`);
-    } else {
-      console.log(`🔍 Viewport culling: No nodes visible in viewport`);
-    }
+      (graphRef.current as any).changeData?.(g6Data);
+      
+      if (culled.visibleNodes.length > 0) {
+        console.log(`🔍 Viewport culling: ${culled.stats.visible}/${culled.stats.total} nodes, LOD ${culled.stats.lodLevel}${culled.stats.cullTimeMs ? ` (${culled.stats.cullTimeMs}ms)` : ''}`);
+      } else {
+        console.log(`🔍 Viewport culling: No nodes visible in viewport`);
+      }
+    };
+
+    applyCulling();
   }, [viewportInfo, cullToViewport, transformToG6Data]);
 
   // Initialize G6 graph
