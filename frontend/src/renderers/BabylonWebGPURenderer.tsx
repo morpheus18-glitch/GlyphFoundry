@@ -66,7 +66,7 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         console.log('🚀 Initializing WebGPU Babylon renderer...');
 
         // Check WebGPU support
-        const webGPUSupported = await WebGPUEngine.IsSupportedAsync();
+        const webGPUSupported = await WebGPUEngine.IsSupportedAsync;
 
         let engine: Engine | WebGPUEngine;
         
@@ -137,10 +137,10 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         fillLight.diffuse = new Color3(1, 0, 1);
 
         const glowLayer = new GlowLayer('glow', scene, {
-          mainTextureFixedSize: 1024,
-          blurKernelSize: 64
+          mainTextureFixedSize: 2048,
+          blurKernelSize: 128
         });
-        glowLayer.intensity = 2.0;
+        glowLayer.intensity = 3.5;
 
         const defaultPipeline = new DefaultRenderingPipeline(
           'default',
@@ -151,24 +151,24 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         defaultPipeline.samples = 4;
         defaultPipeline.fxaaEnabled = true;
         defaultPipeline.bloomEnabled = true;
-        defaultPipeline.bloomThreshold = 0.3;
-        defaultPipeline.bloomWeight = 0.8;
-        defaultPipeline.bloomKernel = 64;
-        defaultPipeline.bloomScale = 0.5;
+        defaultPipeline.bloomThreshold = 0.1;
+        defaultPipeline.bloomWeight = 1.5;
+        defaultPipeline.bloomKernel = 128;
+        defaultPipeline.bloomScale = 0.7;
 
         defaultPipeline.chromaticAberrationEnabled = true;
         if (defaultPipeline.chromaticAberration) {
-          defaultPipeline.chromaticAberration.aberrationAmount = 30;
+          defaultPipeline.chromaticAberration.aberrationAmount = 50;
         }
 
         defaultPipeline.imageProcessingEnabled = true;
         if (defaultPipeline.imageProcessing) {
           defaultPipeline.imageProcessing.toneMappingEnabled = true;
           defaultPipeline.imageProcessing.toneMappingType = 1;
-          defaultPipeline.imageProcessing.exposure = 1.4;
-          defaultPipeline.imageProcessing.contrast = 1.3;
+          defaultPipeline.imageProcessing.exposure = 2.2;
+          defaultPipeline.imageProcessing.contrast = 1.5;
           defaultPipeline.imageProcessing.vignetteEnabled = true;
-          defaultPipeline.imageProcessing.vignetteWeight = 1.5;
+          defaultPipeline.imageProcessing.vignetteWeight = 2.0;
         }
 
         const ssao = new SSAO2RenderingPipeline(
@@ -282,10 +282,11 @@ function renderGraph(
     const material = new StandardMaterial(`mat-${node.id}`, scene);
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
-    material.emissiveColor = new Color3(rgb.r, rgb.g, rgb.b);
-    material.diffuseColor = new Color3(rgb.r * 0.5, rgb.g * 0.5, rgb.b * 0.5);
-    material.specularColor = new Color3(1, 1, 1);
-    material.specularPower = 64;
+    material.emissiveColor = new Color3(rgb.r * 5.0, rgb.g * 5.0, rgb.b * 5.0);
+    material.diffuseColor = new Color3(rgb.r * 0.3, rgb.g * 0.3, rgb.b * 0.3);
+    material.specularColor = new Color3(2, 2, 2);
+    material.specularPower = 128;
+    material.alpha = 0.95;
 
     sphere.material = material;
 
@@ -316,11 +317,11 @@ function renderGraph(
       );
 
       const edgeMaterial = new StandardMaterial(`edge-mat-${edge.source}-${edge.target}`, scene);
-      edgeMaterial.emissiveColor = new Color3(0, 1, 1);
-      edgeMaterial.alpha = 0.3;
+      edgeMaterial.emissiveColor = new Color3(0, 3, 3);
+      edgeMaterial.alpha = 0.5;
       
-      line.color = new Color3(0, 1, 1);
-      line.alpha = 0.3;
+      line.color = new Color3(0, 3, 3);
+      line.alpha = 0.5;
     }
   });
 }

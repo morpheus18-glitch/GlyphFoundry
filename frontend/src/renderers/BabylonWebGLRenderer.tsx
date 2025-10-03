@@ -116,10 +116,10 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
         fillLight.diffuse = new Color3(1, 0, 1);
 
         const glowLayer = new GlowLayer('glow', scene, {
-          mainTextureFixedSize: 512,
-          blurKernelSize: 32
+          mainTextureFixedSize: 1024,
+          blurKernelSize: 64
         });
-        glowLayer.intensity = 1.5;
+        glowLayer.intensity = 3.0;
 
         const defaultPipeline = new DefaultRenderingPipeline(
           'default',
@@ -130,19 +130,19 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
         defaultPipeline.samples = 2;
         defaultPipeline.fxaaEnabled = true;
         defaultPipeline.bloomEnabled = true;
-        defaultPipeline.bloomThreshold = 0.4;
-        defaultPipeline.bloomWeight = 0.6;
-        defaultPipeline.bloomKernel = 32;
-        defaultPipeline.bloomScale = 0.5;
+        defaultPipeline.bloomThreshold = 0.1;
+        defaultPipeline.bloomWeight = 1.3;
+        defaultPipeline.bloomKernel = 64;
+        defaultPipeline.bloomScale = 0.7;
 
         defaultPipeline.imageProcessingEnabled = true;
         if (defaultPipeline.imageProcessing) {
           defaultPipeline.imageProcessing.toneMappingEnabled = true;
           defaultPipeline.imageProcessing.toneMappingType = 1;
-          defaultPipeline.imageProcessing.exposure = 1.2;
-          defaultPipeline.imageProcessing.contrast = 1.2;
+          defaultPipeline.imageProcessing.exposure = 2.0;
+          defaultPipeline.imageProcessing.contrast = 1.4;
           defaultPipeline.imageProcessing.vignetteEnabled = true;
-          defaultPipeline.imageProcessing.vignetteWeight = 1.2;
+          defaultPipeline.imageProcessing.vignetteWeight = 1.8;
         }
 
         const ssao = new SSAO2RenderingPipeline(
@@ -256,10 +256,11 @@ function renderGraph(
     const material = new StandardMaterial(`mat-${node.id}`, scene);
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
-    material.emissiveColor = new Color3(rgb.r, rgb.g, rgb.b);
-    material.diffuseColor = new Color3(rgb.r * 0.5, rgb.g * 0.5, rgb.b * 0.5);
-    material.specularColor = new Color3(1, 1, 1);
-    material.specularPower = 32;
+    material.emissiveColor = new Color3(rgb.r * 4.5, rgb.g * 4.5, rgb.b * 4.5);
+    material.diffuseColor = new Color3(rgb.r * 0.3, rgb.g * 0.3, rgb.b * 0.3);
+    material.specularColor = new Color3(2, 2, 2);
+    material.specularPower = 128;
+    material.alpha = 0.95;
 
     sphere.material = material;
 
@@ -289,8 +290,8 @@ function renderGraph(
         scene
       );
 
-      line.color = new Color3(0, 1, 1);
-      line.alpha = 0.3;
+      line.color = new Color3(0, 2.5, 2.5);
+      line.alpha = 0.5;
     }
   });
 }
