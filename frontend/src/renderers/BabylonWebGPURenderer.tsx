@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Engine,
+  WebGPUEngine,
   Scene,
   ArcRotateCamera,
   Vector3,
@@ -17,7 +18,9 @@ import {
   SSAO2RenderingPipeline,
   MotionBlurPostProcess,
   VolumetricLightScatteringPostProcess,
-  Mesh
+  Mesh,
+  ActionManager,
+  ExecuteCodeAction
 } from '@babylonjs/core';
 
 interface GraphNode {
@@ -50,7 +53,7 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
   className = ''
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<Engine | null>(null);
+  const engineRef = useRef<Engine | WebGPUEngine | null>(null);
   const sceneRef = useRef<Scene | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,19 +65,33 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
       try {
         console.log('🚀 Initializing WebGPU Babylon renderer...');
 
-        const engine = new Engine(
-          canvasRef.current,
-          true,
-          {
-            useHighPrecisionMatrix: true,
+        // Check WebGPU support
+        const webGPUSupported = await WebGPUEngine.IsSupportedAsync;
+
+        let engine: Engine | WebGPUEngine;
+        
+        if (webGPUSupported) {
+          console.log('✅ WebGPU supported, using WebGPU engine');
+          const webGPUEngine = new WebGPUEngine(canvasRef.current, {
             antialias: true,
             powerPreference: 'high-performance',
-            doNotHandleContextLost: false,
-          },
-          true
-        );
+          });
+          await webGPUEngine.initAsync();
+          engine = webGPUEngine;
+        } else {
+          console.log('⚠️ WebGPU not supported, falling back to WebGL');
+          engine = new Engine(
+            canvasRef.current,
+            true,
+            {
+              useHighPrecisionMatrix: true,
+              antialias: true,
+              powerPreference: 'high-performance',
+              doNotHandleContextLost: false,
+            }
+          );
+        }
 
-        await engine.initAsync();
         engineRef.current = engine;
 
         const scene = new Scene(engine);
@@ -273,10 +290,10 @@ function renderGraph(
     sphere.material = material;
 
     if (onNodeClick) {
-      sphere.actionManager = new (window as any).BABYLON.ActionManager(scene);
+      sphere.actionManager = new ActionManager(scene);
       sphere.actionManager.registerAction(
-        new (window as any).BABYLON.ExecuteCodeAction(
-          (window as any).BABYLON.ActionManager.OnPickTrigger,
+        new ExecuteCodeAction(
+          ActionManager.OnPickTrigger,
           () => onNodeClick(node.id)
         )
       );
