@@ -117,20 +117,36 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
 
-    try {
-      const response = await fetch(
-        `${BASE}/data?window_minutes=525600&limit_nodes=${config.maxNodes}&limit_edges=${config.maxEdges}`,
-        { headers }
-      );
-      
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
-    } catch (err) {
-      console.warn('API fetch failed, using sample data:', err);
-      const sampleNodes = Math.min(config.maxNodes, 600);
-      const sampleEdges = Math.min(config.maxEdges, 1200);
-      return makeSampleGraph(sampleNodes, sampleEdges);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const response = await fetch(
+          `${BASE}/data?window_minutes=525600&limit_nodes=${config.maxNodes}&limit_edges=${config.maxEdges}`,
+          { headers }
+        );
+        
+        if (!response.ok) {
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            continue;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+      } catch (err) {
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+        console.warn('API fetch failed after retries, using sample data:', err);
+        const sampleNodes = Math.min(config.maxNodes, 600);
+        const sampleEdges = Math.min(config.maxEdges, 1200);
+        return makeSampleGraph(sampleNodes, sampleEdges);
+      }
     }
+    
+    const sampleNodes = Math.min(config.maxNodes, 600);
+    const sampleEdges = Math.min(config.maxEdges, 1200);
+    return makeSampleGraph(sampleNodes, sampleEdges);
   }, [currentTier]);
 
   // Create sample graph for fallback
@@ -331,8 +347,9 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         setError(null);
 
       } catch (err) {
-        console.error('G6 Graph initialization failed:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize graph');
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('G6 Graph initialization failed:', errorMsg, err);
+        setError(`Graph initialization failed: ${errorMsg}`);
         setLoading(false);
       }
     };

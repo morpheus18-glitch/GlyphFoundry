@@ -25,9 +25,9 @@ export const QualityTierIndicator: React.FC<QualityTierIndicatorProps> = ({
                    metrics.avgFps >= 30 ? '#f59e0b' : '#ef4444';
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-2 md:bottom-4 right-2 md:right-4 z-50">
       <div 
-        className="bg-black/80 backdrop-blur-sm border rounded-lg overflow-hidden transition-all duration-300"
+        className="bg-black/90 backdrop-blur-sm border rounded-lg overflow-hidden transition-all duration-300"
         style={{ 
           borderColor: tierColor,
           boxShadow: `0 0 20px ${tierColor}40`
@@ -35,18 +35,18 @@ export const QualityTierIndicator: React.FC<QualityTierIndicatorProps> = ({
       >
         <button
           onClick={() => setExpanded(!expanded)}
-          className="px-4 py-2 flex items-center gap-3 hover:bg-white/5 transition-colors w-full"
+          className="px-2 md:px-4 py-1.5 md:py-2 flex items-center gap-2 md:gap-3 hover:bg-white/5 transition-colors w-full"
         >
-          <span className="text-2xl">{tierIcon}</span>
+          <span className="text-lg md:text-2xl">{tierIcon}</span>
           <div className="text-left">
-            <div className="text-xs text-gray-400">Quality</div>
-            <div className="font-bold" style={{ color: tierColor }}>
+            <div className="text-[10px] md:text-xs text-gray-400">Quality</div>
+            <div className="text-xs md:text-base font-bold" style={{ color: tierColor }}>
               {config.displayName}
             </div>
           </div>
-          <div className="ml-4 text-left">
-            <div className="text-xs text-gray-400">FPS</div>
-            <div className="font-mono font-bold" style={{ color: fpsColor }}>
+          <div className="ml-2 md:ml-4 text-left">
+            <div className="text-[10px] md:text-xs text-gray-400">FPS</div>
+            <div className="text-xs md:text-base font-mono font-bold" style={{ color: fpsColor }}>
               {metrics.avgFps}
             </div>
           </div>
