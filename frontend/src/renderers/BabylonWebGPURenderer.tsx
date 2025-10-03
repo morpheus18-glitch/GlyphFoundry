@@ -9,6 +9,7 @@ import {
   Color4,
   MeshBuilder,
   StandardMaterial,
+  PBRMaterial,
   Color3,
   PointLight,
   ShadowGenerator,
@@ -22,7 +23,8 @@ import {
   ActionManager,
   ExecuteCodeAction,
   Texture,
-  Animation
+  Animation,
+  CubeTexture
 } from '@babylonjs/core';
 
 interface GraphNode {
@@ -100,6 +102,13 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         sceneRef.current = scene;
 
         scene.clearColor = new Color4(0, 0, 0, 1);
+        
+        const hdrTexture = CubeTexture.CreateFromPrefilteredData(
+          'https://playground.babylonjs.com/textures/SpecularHDR.dds',
+          scene
+        );
+        scene.environmentTexture = hdrTexture;
+        scene.environmentIntensity = 0.8;
 
         const camera = new ArcRotateCamera(
           'camera',
@@ -110,39 +119,54 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
           scene
         );
         camera.attachControl(canvasRef.current, true);
+        
         camera.lowerRadiusLimit = 200;
         camera.upperRadiusLimit = 8000;
         camera.minZ = 0.1;
         camera.maxZ = 20000;
-        camera.wheelPrecision = 15;
-        camera.pinchPrecision = 15;
-        camera.panningSensibility = 100;
-        camera.inertia = 0.9;
-        camera.angularSensibilityX = 1000;
-        camera.angularSensibilityY = 1000;
+        
+        camera.lowerBetaLimit = null;
+        camera.upperBetaLimit = null;
+        camera.allowUpsideDown = true;
+        
+        camera.wheelPrecision = 50;
+        camera.pinchPrecision = 50;
+        camera.panningSensibility = 1000;
+        camera.inertia = 0.85;
+        camera.angularSensibilityX = 500;
+        camera.angularSensibilityY = 500;
+        
+        camera.useAutoRotationBehavior = false;
+        camera.checkCollisions = false;
 
         const ambientLight = new HemisphericLight(
           'ambient',
           new Vector3(0, 1, 0),
           scene
         );
-        ambientLight.intensity = 0.3;
+        ambientLight.intensity = 0.2;
+        ambientLight.diffuse = new Color3(0.1, 0.15, 0.2);
+        ambientLight.groundColor = new Color3(0, 0, 0);
 
         const keyLight = new PointLight(
           'keyLight',
-          new Vector3(200, 300, -200),
+          new Vector3(500, 800, -500),
           scene
         );
-        keyLight.intensity = 0.8;
+        keyLight.intensity = 2.5;
         keyLight.diffuse = new Color3(0, 1, 1);
+        keyLight.specular = new Color3(1, 1, 1);
+        keyLight.range = 5000;
 
         const fillLight = new PointLight(
           'fillLight',
-          new Vector3(-200, 200, 200),
+          new Vector3(-500, 500, 500),
           scene
         );
-        fillLight.intensity = 0.5;
-        fillLight.diffuse = new Color3(1, 0, 1);
+        fillLight.intensity = 1.8;
+        fillLight.diffuse = new Color3(1, 0.3, 1);
+        fillLight.specular = new Color3(0.5, 0.5, 0.5);
+        fillLight.range = 5000;
 
         const glowLayer = new GlowLayer('glow', scene, {
           mainTextureFixedSize: 2048,
@@ -292,18 +316,27 @@ function renderGraph(
 
     sphere.position = new Vector3(node.x, node.y, node.z);
 
-    const material = new StandardMaterial(`mat-${node.id}`, scene);
+    const material = new PBRMaterial(`mat-${node.id}`, scene);
     const color = node.color || '#00ffff';
     const rgb = hexToRgb(color);
-    material.emissiveColor = new Color3(rgb.r * 2.5, rgb.g * 2.5, rgb.b * 2.5);
-    material.diffuseColor = new Color3(rgb.r * 0.8, rgb.g * 0.8, rgb.b * 0.8);
-    material.specularColor = new Color3(2, 2, 2);
-    material.specularPower = 128;
-    material.alpha = 0.95;
+    
+    material.albedoColor = new Color3(rgb.r, rgb.g, rgb.b);
+    material.emissiveColor = new Color3(rgb.r * 4, rgb.g * 4, rgb.b * 4);
+    material.emissiveIntensity = 1.8;
+    
+    material.metallic = 0.9;
+    material.roughness = 0.2;
     
     const normalMap = new Texture("https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight/grasslight-big-nm.jpg", scene);
     material.bumpTexture = normalMap;
-    material.bumpTexture.level = 0.8;
+    material.bumpTexture.level = 1.2;
+    
+    material.directIntensity = 1.5;
+    material.environmentIntensity = 0.8;
+    material.specularIntensity = 1.2;
+    
+    material.alpha = 0.98;
+    material.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
 
     sphere.material = material;
 
