@@ -91,6 +91,8 @@ export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
         camera.attachControl(canvasRef.current, true);
         camera.lowerRadiusLimit = 200;
         camera.upperRadiusLimit = 8000;
+        camera.minZ = 0.1;
+        camera.maxZ = 20000;
         camera.wheelPrecision = 15;
         camera.pinchPrecision = 15;
         camera.panningSensibility = 100;
