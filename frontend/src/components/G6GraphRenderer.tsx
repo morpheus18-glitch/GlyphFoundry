@@ -174,7 +174,16 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const fetchGraphData = useCallback(async (): Promise<GraphPayload> => {
     const BASE = import.meta.env.VITE_GRAPH_BASE || '/graph3d';
     const TOKEN = import.meta.env.VITE_GRAPH_TOKEN || '';
-    const config = getConfigForTier(currentTier);
+    let config = getConfigForTier(currentTier);
+    
+    // Mobile-specific limits: Much more aggressive to prevent initial freeze
+    if (isMobile) {
+      config = {
+        ...config,
+        maxNodes: currentTier === 'standard' ? 500 : 300,  // Drastically reduced for mobile
+        maxEdges: currentTier === 'standard' ? 1500 : 900
+      };
+    }
     
     // Check for test mode URL parameters
     const urlParams = new URLSearchParams(window.location.search);
