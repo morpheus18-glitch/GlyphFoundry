@@ -63,7 +63,17 @@ The platform features a high-performance G6 5.0 WebGL renderer as the primary kn
   - Visual effects: focused node scales 2x with enhanced glow (40px shadow), other nodes dimmed to 15% opacity
   - Multiple exit methods: ESC key, X button, or click-outside backdrop
   - Mobile-responsive panels with proper touch target sizing
-- **Viewport Culling** (Pending): For 1M+ node support with frustum culling and LOD
+- ✅ **Viewport Culling & Lazy Loading** (October 2025): Handles 1M total nodes, renders ≤50k visible simultaneously
+  - QuadTree spatial indexing with worker-based culling for performance
+  - Tier-aware node limits: Ultra (50k), High (30k), Standard (2k), Eco (1k)
+  - Mobile capped at Standard tier for aggressive LOD defaults
+  - Web Worker offloading prevents main thread blocking
+- ✅ **WASM-G6 Integration Bridge** (October 2025): Rust physics engine integrated with G6 renderer
+  - Barnes-Hut O(n log n) algorithm via 109KB WASM binary
+  - Performance targets: ≤16ms desktop, ≤25ms mobile physics ticks
+  - Automatic WASM initialization with proper binary loading
+  - Data refresh tracking re-runs physics on 3s polling updates
+  - Loop cleanup prevents runaway animations on data changes
 
 #### Three.js Cinematic Renderer (Legacy)
 The visualization also includes a Hollywood-grade 3D renderer with volumetric effects:
