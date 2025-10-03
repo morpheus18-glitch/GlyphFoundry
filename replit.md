@@ -57,6 +57,12 @@ The platform features a high-performance G6 5.0 WebGL renderer as the primary kn
   - Automatic upgrade after stable performance (5s cooldown)
   - Real-time performance HUD with FPS, frame time, tier status, and manual override
 - ✅ **Mobile Touch Controls**: Pinch-to-zoom, pan gestures, tap/long-press interactions with haptic feedback
+- ✅ **Focused Node Detail View**: Cinematic node exploration with zoom-in animations
+  - Click any node to zoom and focus with smooth camera animation (G6 v5 translateTo/zoomTo APIs)
+  - Glassmorphism UI panels showing node content, smart tags, and related connections
+  - Visual effects: focused node scales 2x with enhanced glow (40px shadow), other nodes dimmed to 15% opacity
+  - Multiple exit methods: ESC key, X button, or click-outside backdrop
+  - Mobile-responsive panels with proper touch target sizing
 - **Viewport Culling** (Pending): For 1M+ node support with frustum culling and LOD
 
 #### Three.js Cinematic Renderer (Legacy)
