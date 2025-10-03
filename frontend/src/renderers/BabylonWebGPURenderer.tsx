@@ -133,8 +133,8 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         camera.upperBetaLimit = null;
         camera.allowUpsideDown = true;
         
-        camera.wheelPrecision = 50;
-        camera.pinchPrecision = 50;
+        camera.wheelPrecision = 3;
+        camera.pinchPrecision = 3;
         camera.panningSensibility = 1000;
         camera.inertia = 0.85;
         camera.angularSensibilityX = 500;
