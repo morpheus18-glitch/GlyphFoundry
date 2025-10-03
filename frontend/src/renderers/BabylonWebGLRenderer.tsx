@@ -346,7 +346,30 @@ function renderGraph(
 
   nodes.forEach((node, index) => {
     const baseDiameter = (node.size || 10) * 18;
-    const sphere = MeshBuilder.CreateIcoSphere(
+    const color = node.color || '#00ffff';
+    const rgb = hexToRgb(color);
+    
+    const innerSphere = MeshBuilder.CreateIcoSphere(
+      `node-inner-${node.id}`,
+      { 
+        radius: baseDiameter * 0.85,
+        subdivisions: 3,
+        flat: false
+      },
+      scene
+    );
+    innerSphere.position = new Vector3(node.x, node.y, node.z);
+
+    const innerMaterial = new PBRMaterial(`mat-inner-${node.id}`, scene);
+    innerMaterial.albedoColor = new Color3(rgb.r * 0.5, rgb.g * 0.5, rgb.b * 0.5);
+    innerMaterial.emissiveColor = new Color3(rgb.r * 3.5, rgb.g * 3.5, rgb.b * 3.5);
+    innerMaterial.emissiveIntensity = 2.5;
+    innerMaterial.metallic = 0.1;
+    innerMaterial.roughness = 0.8;
+    innerMaterial.alpha = 0.9;
+    innerSphere.material = innerMaterial;
+
+    const wireframeSphere = MeshBuilder.CreateIcoSphere(
       `node-${node.id}`,
       { 
         radius: baseDiameter,
@@ -355,44 +378,37 @@ function renderGraph(
       },
       scene
     );
+    wireframeSphere.position = new Vector3(node.x, node.y, node.z);
 
-    sphere.position = new Vector3(node.x, node.y, node.z);
-
-    const material = new PBRMaterial(`mat-${node.id}`, scene);
-    const color = node.color || '#00ffff';
-    const rgb = hexToRgb(color);
-    
-    material.albedoColor = new Color3(rgb.r * 0.8, rgb.g * 0.8, rgb.b * 0.8);
-    material.emissiveColor = new Color3(rgb.r * 2.5, rgb.g * 2.5, rgb.b * 2.5);
-    material.emissiveIntensity = 1.8;
-    
-    material.metallic = 0.95;
-    material.roughness = 0.15;
-    
-    material.directIntensity = 2.0;
-    material.environmentIntensity = 1.2;
-    material.specularIntensity = 1.8;
-    
-    material.alpha = 1.0;
-
-    sphere.material = material;
+    const wireframeMaterial = new PBRMaterial(`mat-${node.id}`, scene);
+    wireframeMaterial.albedoColor = new Color3(rgb.r * 0.3, rgb.g * 0.3, rgb.b * 0.3);
+    wireframeMaterial.emissiveColor = new Color3(rgb.r * 4.0, rgb.g * 4.0, rgb.b * 4.0);
+    wireframeMaterial.emissiveIntensity = 2.8;
+    wireframeMaterial.metallic = 0.98;
+    wireframeMaterial.roughness = 0.05;
+    wireframeMaterial.wireframe = true;
+    wireframeMaterial.alpha = 1.0;
+    wireframeSphere.material = wireframeMaterial;
 
     scene.registerBeforeRender(() => {
       const time = performance.now() * 0.001;
       const phaseOffset = (index % 10) * 0.5;
-      sphere.scaling.setAll(1 + Math.sin(time * 2 + phaseOffset) * 0.15);
-      sphere.rotation.y += 0.005;
+      const scale = 1 + Math.sin(time * 2 + phaseOffset) * 0.15;
+      innerSphere.scaling.setAll(scale);
+      wireframeSphere.scaling.setAll(scale);
+      innerSphere.rotation.y += 0.005;
+      wireframeSphere.rotation.y += 0.005;
     });
 
     if (onNodeClick) {
-      sphere.actionManager = new ActionManager(scene);
-      sphere.actionManager.registerAction(
+      wireframeSphere.actionManager = new ActionManager(scene);
+      wireframeSphere.actionManager.registerAction(
         new ExecuteCodeAction(
           ActionManager.OnPickTrigger,
           () => {
             const camera = scene.activeCamera as ArcRotateCamera;
             if (camera) {
-              camera.setTarget(sphere.position);
+              camera.setTarget(wireframeSphere.position);
               const distance = Math.max(baseDiameter * 8, 300);
               Animation.CreateAndStartAnimation(
                 'cameraZoom',
@@ -411,7 +427,7 @@ function renderGraph(
       );
     }
 
-    nodeMap.set(node.id, sphere);
+    nodeMap.set(node.id, wireframeSphere);
   });
 
 }
