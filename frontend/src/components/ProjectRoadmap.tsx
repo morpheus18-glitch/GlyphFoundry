@@ -28,7 +28,7 @@ const ROADMAP_DATA: Phase[] = [
     goal: '50k-100k nodes at 45+ FPS desktop, 30+ FPS mobile',
     duration: '5-7 weeks',
     status: 'in_progress',
-    completion: 75,
+    completion: 88,
     tasks: [
       {
         id: 'task1',
@@ -87,8 +87,8 @@ const ROADMAP_DATA: Phase[] = [
       {
         id: 'task7',
         title: 'Cinematic Effects (Bloom, God Rays)',
-        status: 'pending',
-        duration: '4-6 days',
+        status: 'completed',
+        duration: 'Complete',
         dependencies: ['task3'],
         complexity: 'high',
         target: 'HDR neon on pure black, quality-tier aware',

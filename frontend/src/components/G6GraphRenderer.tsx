@@ -11,6 +11,7 @@ import { useViewportCulling } from '../hooks/useViewportCulling';
 import { useViewportCullingWorker } from '../hooks/useViewportCullingWorker';
 import { calculateViewportBounds, type ViewportInfo } from '../utils/viewportCulling';
 import { useWasmPhysics } from '../hooks/useWasmPhysics';
+import { BloomPostProcessor, BLOOM_CONFIGS } from '../utils/bloomPostProcessing';
 
 // Types matching backend API
 interface ApiNode {
@@ -45,6 +46,26 @@ interface G6GraphRendererProps {
   tenantId: string;
   onNodeSelect?: (node: ApiNode) => void;
   className?: string;
+}
+
+// HDR Neon Color Palette for ultra-bright aesthetics
+const HDR_NEON_COLORS = {
+  cyan: '#00FFFF',      // Electric cyan
+  magenta: '#FF00FF',   // Vivid magenta
+  purple: '#8B00FF',    // Ultra violet
+  pink: '#FF1493',      // Deep pink
+  blue: '#0080FF',      // Neon blue
+  green: '#00FF80',     // Electric green
+} as const;
+
+function getHDRNeonColor(importance: number = 0.5): string {
+  const colors = Object.values(HDR_NEON_COLORS);
+  // Map importance to color intensity/variety
+  if (importance > 0.8) return HDR_NEON_COLORS.magenta;
+  if (importance > 0.6) return HDR_NEON_COLORS.purple;
+  if (importance > 0.4) return HDR_NEON_COLORS.cyan;
+  if (importance > 0.2) return HDR_NEON_COLORS.pink;
+  return HDR_NEON_COLORS.blue;
 }
 
 // GPU detection
@@ -101,6 +122,9 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   const physicsTickRef = useRef<number | null>(null);
   const lastPhysicsTime = useRef<number>(0);
 
+  // Bloom post-processing for cinematic HDR effects
+  const bloomProcessorRef = useRef<BloomPostProcessor | null>(null);
+
   // Adaptive rendering system
   const { metrics, currentTier, setTier, isMobile } = usePerformanceMonitor({
     targetFps: 60,
@@ -108,6 +132,13 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
     stabilityThreshold: 0.1,
     onTierChange: (tier) => {
       console.log(`🎨 Quality tier changed: ${tier}`);
+      
+      // Update bloom config when tier changes
+      if (bloomProcessorRef.current) {
+        const bloomConfig = BLOOM_CONFIGS[tier] || BLOOM_CONFIGS.standard;
+        bloomProcessorRef.current.updateConfig(bloomConfig);
+        console.log(`✨ Bloom updated for tier: ${tier}`);
+      }
     }
   });
 
@@ -262,7 +293,8 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       const isFocused = focusedId === node.id;
       const isDimmed = focusedId && !isFocused;
       
-      const color = isImportant ? '#ff00ff' : '#00ffff';
+      // Use HDR neon color for ultra-bright aesthetics
+      const color = getHDRNeonColor(importance);
       const baseSize = 8 + importance * 12;
       
       const birthTime = birthTimestamps.current.get(node.id) || now;
@@ -271,11 +303,12 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         ? birthAge * birthAge * (3 - 2 * birthAge) 
         : 1;
       
-      // Apply focus/dim effects
+      // Apply focus/dim effects with HDR neon glow
       const focusScale = isFocused ? 2.0 : 1.0;
       const finalSize = baseSize * birthScale * focusScale;
       const opacity = isDimmed ? 0.15 : (isFocused ? 1.0 : 0.9 * birthScale);
-      const shadowBlur = isFocused ? 40 : (10 * birthScale);
+      // Intensified glow for HDR neon aesthetics (2x stronger)
+      const shadowBlur = isFocused ? 60 : (20 * birthScale * (1 + importance));
       
       return {
         id: node.id,
@@ -458,6 +491,28 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
         // Store graph ref BEFORE any physics initialization
         graphRef.current = graph;
 
+        // Initialize bloom post-processing
+        // Get G6's canvas element (WebGL renderer creates a canvas element)
+        setTimeout(() => {
+          const canvasElement = containerRef.current?.querySelector('canvas');
+          if (canvasElement && hasGPU.current) {
+            const bloomConfig = BLOOM_CONFIGS[currentTier] || BLOOM_CONFIGS.standard;
+            bloomProcessorRef.current = new BloomPostProcessor(canvasElement, bloomConfig);
+            console.log(`✨ Bloom post-processing initialized (tier: ${currentTier})`);
+            
+            // Start bloom render loop
+            const renderBloom = () => {
+              if (bloomProcessorRef.current) {
+                bloomProcessorRef.current.render();
+              }
+              requestAnimationFrame(renderBloom);
+            };
+            renderBloom();
+          } else {
+            console.warn('⚠️ Bloom disabled: canvas not found or no GPU');
+          }
+        }, 100); // Small delay to ensure canvas is in DOM
+
         // Track viewport changes for culling
         const updateViewport = () => {
           if (!containerRef.current || !graph) return;
@@ -587,10 +642,15 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
   useEffect(() => {
     const handleResize = () => {
       if (graphRef.current && containerRef.current) {
-        graphRef.current.setSize(
-          containerRef.current.clientWidth,
-          containerRef.current.clientHeight
-        );
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+        
+        graphRef.current.setSize(width, height);
+        
+        // Resize bloom processor
+        if (bloomProcessorRef.current) {
+          bloomProcessorRef.current.resize(width, height);
+        }
       }
     };
 
@@ -851,6 +911,16 @@ export const G6GraphRenderer: React.FC<G6GraphRendererProps> = ({
       }
     };
   }, [wasmPhysics.isReady, wasmPhysics, dataVersion]);
+
+  // Cleanup bloom processor on unmount
+  useEffect(() => {
+    return () => {
+      if (bloomProcessorRef.current) {
+        bloomProcessorRef.current.destroy();
+        bloomProcessorRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className={`relative w-full h-full bg-black ${className}`}>
