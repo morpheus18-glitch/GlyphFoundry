@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Engine,
-  WebGPUEngine,
   Scene,
   ArcRotateCamera,
   Vector3,
@@ -11,13 +10,9 @@ import {
   StandardMaterial,
   Color3,
   PointLight,
-  ShadowGenerator,
   GlowLayer,
   DefaultRenderingPipeline,
-  SSAORenderingPipeline,
   SSAO2RenderingPipeline,
-  MotionBlurPostProcess,
-  VolumetricLightScatteringPostProcess,
   Mesh,
   ActionManager,
   ExecuteCodeAction
@@ -39,58 +34,42 @@ interface GraphEdge {
   weight?: number;
 }
 
-interface BabylonWebGPURendererProps {
+interface BabylonWebGLRendererProps {
   nodes: GraphNode[];
   edges: GraphEdge[];
   onNodeClick?: (nodeId: string) => void;
   className?: string;
 }
 
-export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
+export const BabylonWebGLRenderer: React.FC<BabylonWebGLRendererProps> = ({
   nodes,
   edges,
   onNodeClick,
   className = ''
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<Engine | WebGPUEngine | null>(null);
+  const engineRef = useRef<Engine | null>(null);
   const sceneRef = useRef<Scene | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const initWebGPU = async () => {
+    const initWebGL = async () => {
       if (!canvasRef.current) return;
 
       try {
-        console.log('🚀 Initializing WebGPU Babylon renderer...');
+        console.log('🚀 Initializing WebGL Babylon renderer (mid-tier)...');
 
-        // Check WebGPU support
-        const webGPUSupported = await WebGPUEngine.IsSupportedAsync();
-
-        let engine: Engine | WebGPUEngine;
-        
-        if (webGPUSupported) {
-          console.log('✅ WebGPU supported, using WebGPU engine');
-          const webGPUEngine = new WebGPUEngine(canvasRef.current, {
+        const engine = new Engine(
+          canvasRef.current,
+          true,
+          {
+            useHighPrecisionMatrix: true,
             antialias: true,
             powerPreference: 'high-performance',
-          });
-          await webGPUEngine.initAsync();
-          engine = webGPUEngine;
-        } else {
-          console.log('⚠️ WebGPU not supported, falling back to WebGL');
-          engine = new Engine(
-            canvasRef.current,
-            true,
-            {
-              useHighPrecisionMatrix: true,
-              antialias: true,
-              powerPreference: 'high-performance',
-              doNotHandleContextLost: false,
-            }
-          );
-        }
+            doNotHandleContextLost: false,
+          }
+        );
 
         engineRef.current = engine;
 
@@ -137,38 +116,33 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         fillLight.diffuse = new Color3(1, 0, 1);
 
         const glowLayer = new GlowLayer('glow', scene, {
-          mainTextureFixedSize: 1024,
-          blurKernelSize: 64
+          mainTextureFixedSize: 512,
+          blurKernelSize: 32
         });
-        glowLayer.intensity = 2.0;
+        glowLayer.intensity = 1.5;
 
         const defaultPipeline = new DefaultRenderingPipeline(
           'default',
-          true,
+          false,
           scene,
           [camera]
         );
-        defaultPipeline.samples = 4;
+        defaultPipeline.samples = 2;
         defaultPipeline.fxaaEnabled = true;
         defaultPipeline.bloomEnabled = true;
-        defaultPipeline.bloomThreshold = 0.3;
-        defaultPipeline.bloomWeight = 0.8;
-        defaultPipeline.bloomKernel = 64;
+        defaultPipeline.bloomThreshold = 0.4;
+        defaultPipeline.bloomWeight = 0.6;
+        defaultPipeline.bloomKernel = 32;
         defaultPipeline.bloomScale = 0.5;
-
-        defaultPipeline.chromaticAberrationEnabled = true;
-        if (defaultPipeline.chromaticAberration) {
-          defaultPipeline.chromaticAberration.aberrationAmount = 30;
-        }
 
         defaultPipeline.imageProcessingEnabled = true;
         if (defaultPipeline.imageProcessing) {
           defaultPipeline.imageProcessing.toneMappingEnabled = true;
           defaultPipeline.imageProcessing.toneMappingType = 1;
-          defaultPipeline.imageProcessing.exposure = 1.4;
-          defaultPipeline.imageProcessing.contrast = 1.3;
+          defaultPipeline.imageProcessing.exposure = 1.2;
+          defaultPipeline.imageProcessing.contrast = 1.2;
           defaultPipeline.imageProcessing.vignetteEnabled = true;
-          defaultPipeline.imageProcessing.vignetteWeight = 1.5;
+          defaultPipeline.imageProcessing.vignetteWeight = 1.2;
         }
 
         const ssao = new SSAO2RenderingPipeline(
@@ -176,13 +150,13 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
           scene,
           {
             ssaoRatio: 0.5,
-            blurRatio: 1
+            blurRatio: 0.5
           },
           [camera]
         );
-        ssao.radius = 3;
-        ssao.totalStrength = 1.5;
-        ssao.base = 0.1;
+        ssao.radius = 2;
+        ssao.totalStrength = 1.0;
+        ssao.base = 0.2;
 
         renderGraph(scene, nodes, edges, onNodeClick);
 
@@ -195,16 +169,16 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         });
 
         setIsReady(true);
-        console.log('✅ WebGPU Babylon renderer initialized successfully');
+        console.log('✅ WebGL Babylon renderer initialized successfully');
 
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        console.error('❌ WebGPU initialization failed:', errorMsg);
+        console.error('❌ WebGL initialization failed:', errorMsg);
         setError(errorMsg);
       }
     };
 
-    initWebGPU();
+    initWebGL();
 
     return () => {
       if (sceneRef.current) {
@@ -238,15 +212,15 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
       {!isReady && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80">
           <div className="text-center">
-            <div className="text-cyan-400 text-xl mb-2">Initializing WebGPU...</div>
-            <div className="text-cyan-400/60 text-sm">Game engine-quality renderer</div>
+            <div className="text-cyan-400 text-xl mb-2">Initializing WebGL...</div>
+            <div className="text-cyan-400/60 text-sm">High-quality renderer</div>
           </div>
         </div>
       )}
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80">
           <div className="text-center">
-            <div className="text-red-400 text-xl mb-2">WebGPU Failed</div>
+            <div className="text-red-400 text-xl mb-2">WebGL Failed</div>
             <div className="text-red-400/60 text-sm">{error}</div>
           </div>
         </div>
@@ -254,7 +228,7 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
       {isReady && (
         <div className="absolute top-4 left-4 bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-cyan-500/30">
           <div className="text-cyan-400 text-sm font-mono">
-            WebGPU | {nodes.length} nodes | {edges.length} edges
+            WebGL | {nodes.length} nodes | {edges.length} edges
           </div>
         </div>
       )}
@@ -273,7 +247,7 @@ function renderGraph(
   nodes.forEach((node) => {
     const sphere = MeshBuilder.CreateSphere(
       `node-${node.id}`,
-      { diameter: (node.size || 10) * 2, segments: 16 },
+      { diameter: (node.size || 10) * 2, segments: 12 },
       scene
     );
 
@@ -285,7 +259,7 @@ function renderGraph(
     material.emissiveColor = new Color3(rgb.r, rgb.g, rgb.b);
     material.diffuseColor = new Color3(rgb.r * 0.5, rgb.g * 0.5, rgb.b * 0.5);
     material.specularColor = new Color3(1, 1, 1);
-    material.specularPower = 64;
+    material.specularPower = 32;
 
     sphere.material = material;
 
@@ -315,10 +289,6 @@ function renderGraph(
         scene
       );
 
-      const edgeMaterial = new StandardMaterial(`edge-mat-${edge.source}-${edge.target}`, scene);
-      edgeMaterial.emissiveColor = new Color3(0, 1, 1);
-      edgeMaterial.alpha = 0.3;
-      
       line.color = new Color3(0, 1, 1);
       line.alpha = 0.3;
     }

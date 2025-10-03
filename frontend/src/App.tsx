@@ -6,6 +6,7 @@ import { Walkthrough } from "./components/Walkthrough";
 import NeuralKnowledgeNetwork from "./components/NeuralKnowledgeNetwork";
 import { G6GraphRenderer } from "./components/G6GraphRenderer";
 import { ProjectRoadmap } from "./components/ProjectRoadmap";
+import { UnifiedRenderer } from "./renderers/UnifiedRenderer";
 
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 
@@ -16,6 +17,11 @@ type ApiNode = {
   summary: string;
   degree: number;
   ts: number;
+  x?: number;
+  y?: number;
+  z?: number;
+  size?: number;
+  importance?: number;
 };
 
 type ApiEdge = { source: string; target: string; rel: string; weight: number; ts: number };
@@ -29,7 +35,7 @@ type GraphPayload = {
 type TagRow = { tag_id: string; slug: string; name: string; node_id: string; confidence: number };
 
 type ViewMode = "network" | "data" | "overview" | "settings" | "admin" | "roadmap";
-type RendererMode = "threejs" | "g6";
+type RendererMode = "babylon" | "threejs" | "g6";
 
 const GRAPH_BASE = import.meta.env.VITE_GRAPH_BASE || "/graph3d";
 const TAGS_BASE = import.meta.env.VITE_TAGS_BASE || "/tags";
@@ -51,7 +57,7 @@ export default function App() {
   const [refreshToken, setRefreshToken] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [renderer, setRenderer] = useState<RendererMode>("g6");
+  const [renderer, setRenderer] = useState<RendererMode>("babylon");
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -274,6 +280,17 @@ export default function App() {
                 {/* Renderer toggle */}
                 <div className="absolute top-2 md:top-4 right-2 md:right-4 z-50 flex gap-1.5 md:gap-2 bg-black/80 backdrop-blur-sm px-2 md:px-4 py-1.5 md:py-2 rounded-lg border border-cyan-500/30">
                   <button
+                    onClick={() => setRenderer("babylon")}
+                    className={`px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+                      renderer === "babylon"
+                        ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/50"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-cyan-300"
+                    }`}
+                  >
+                    <span className="hidden sm:inline">🎮 Babylon</span>
+                    <span className="sm:hidden">🎮 B</span>
+                  </button>
+                  <button
                     onClick={() => setRenderer("g6")}
                     className={`px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
                       renderer === "g6"
@@ -298,7 +315,27 @@ export default function App() {
                 </div>
 
                 {/* Conditional renderer */}
-                {renderer === "g6" ? (
+                {renderer === "babylon" ? (
+                  <UnifiedRenderer
+                    nodes={graph?.nodes?.map(n => ({
+                      id: n.id,
+                      x: n.x || 0,
+                      y: n.y || 0,
+                      z: n.z || 0,
+                      size: n.size || 10,
+                      color: n.importance && n.importance > 0.5 ? '#ff00ff' : '#00ffff',
+                      label: n.label
+                    })) || []}
+                    edges={graph?.edges?.map(e => ({
+                      source: e.source,
+                      target: e.target,
+                      weight: e.weight
+                    })) || []}
+                    onNodeClick={(nodeId) => {
+                      setSelectedNodeId(nodeId);
+                    }}
+                  />
+                ) : renderer === "g6" ? (
                   <G6GraphRenderer 
                     tenantId="default-tenant"
                     onNodeSelect={(node) => {
