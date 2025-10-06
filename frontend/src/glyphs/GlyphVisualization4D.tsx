@@ -6,7 +6,7 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { GlyphWebGLData, NavigationState4D } from './types';
+import { GlyphWebGLData, NavigationState4D, Glyph4D } from './types';
 
 interface GlyphVisualization4DProps {
   glyphData: GlyphWebGLData;

@@ -191,7 +191,7 @@ export function TemporalNavigator({
         </label>
       </div>
       
-      <style jsx>{`
+      <style>{`
         .temporal-navigator {
           position: absolute;
           bottom: 20px;

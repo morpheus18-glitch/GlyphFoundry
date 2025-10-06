@@ -6,42 +6,17 @@ import {
   ArcRotateCamera,
   Vector3,
   HemisphericLight,
-  Color4,
-  MeshBuilder,
-  StandardMaterial,
-  PBRMaterial,
   Color3,
+  Color4,
   PointLight,
-  ShadowGenerator,
   GlowLayer,
   DefaultRenderingPipeline,
-  SSAORenderingPipeline,
   SSAO2RenderingPipeline,
-  MotionBlurPostProcess,
-  VolumetricLightScatteringPostProcess,
-  Mesh,
-  ActionManager,
-  ExecuteCodeAction,
-  Texture,
-  Animation,
-  CubeTexture
+  CubeTexture,
+  Animation
 } from '@babylonjs/core';
-
-interface GraphNode {
-  id: string;
-  x: number;
-  y: number;
-  z: number;
-  size?: number;
-  color?: string;
-  label?: string;
-}
-
-interface GraphEdge {
-  source: string;
-  target: string;
-  weight?: number;
-}
+import { applyGraphScene, disposeGraphScene } from './babylonGraphScene';
+import type { GraphNode, GraphEdge } from './babylonGraphScene';
 
 interface BabylonWebGPURendererProps {
   nodes: GraphNode[];
@@ -271,7 +246,7 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
         ssao.totalStrength = 0.7;
         ssao.base = 0.4;
 
-        renderGraph(scene, nodes, edges, onNodeClick);
+        applyGraphScene(scene, nodes, edges, onNodeClick);
 
         engine.runRenderLoop(() => {
           scene.render();
@@ -308,6 +283,7 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
       if (sceneRef.current) {
         sceneRef.current.onPointerDown = undefined;
         handlePointerDownRef.current = null;
+        disposeGraphScene(sceneRef.current, { disposeBackground: true });
         sceneRef.current.dispose();
       }
       if (engineRef.current) {
@@ -318,13 +294,7 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
 
   useEffect(() => {
     if (sceneRef.current && isReady) {
-      sceneRef.current.meshes.forEach((mesh) => {
-        if (mesh.name.startsWith('node-') || mesh.name.startsWith('edge-')) {
-          mesh.dispose();
-        }
-      });
-      
-      renderGraph(sceneRef.current, nodes, edges, onNodeClick);
+      applyGraphScene(sceneRef.current, nodes, edges, onNodeClick);
     }
   }, [nodes, edges, isReady, onNodeClick]);
 
@@ -361,114 +331,3 @@ export const BabylonWebGPURenderer: React.FC<BabylonWebGPURendererProps> = ({
     </div>
   );
 };
-
-function renderGraph(
-  scene: Scene,
-  nodes: GraphNode[],
-  edges: GraphEdge[],
-  onNodeClick?: (nodeId: string) => void
-) {
-  const nodeMap = new Map<string, Mesh>();
-
-  nodes.forEach((node, index) => {
-    const baseDiameter = (node.size || 10) * 18;
-    const color = node.color || '#00ffff';
-    const rgb = hexToRgb(color);
-    
-    const innerSphere = MeshBuilder.CreateIcoSphere(
-      `node-inner-${node.id}`,
-      { 
-        radius: baseDiameter * 0.85,
-        subdivisions: 3,
-        flat: false
-      },
-      scene
-    );
-    innerSphere.position = new Vector3(node.x, node.y, node.z);
-
-    const innerMaterial = new PBRMaterial(`mat-inner-${node.id}`, scene);
-    innerMaterial.albedoColor = new Color3(rgb.r * 0.5, rgb.g * 0.5, rgb.b * 0.5);
-    innerMaterial.emissiveColor = new Color3(rgb.r * 3.5, rgb.g * 3.5, rgb.b * 3.5);
-    innerMaterial.emissiveIntensity = 2.5;
-    innerMaterial.metallic = 0.1;
-    innerMaterial.roughness = 0.8;
-    innerMaterial.alpha = 0.9;
-    innerSphere.material = innerMaterial;
-
-    const wireframeSphere = MeshBuilder.CreateIcoSphere(
-      `node-${node.id}`,
-      { 
-        radius: baseDiameter,
-        subdivisions: 4,
-        flat: true
-      },
-      scene
-    );
-    wireframeSphere.position = new Vector3(node.x, node.y, node.z);
-
-    const wireframeMaterial = new PBRMaterial(`mat-${node.id}`, scene);
-    wireframeMaterial.albedoColor = new Color3(rgb.r * 0.3, rgb.g * 0.3, rgb.b * 0.3);
-    wireframeMaterial.emissiveColor = new Color3(rgb.r * 4.0, rgb.g * 4.0, rgb.b * 4.0);
-    wireframeMaterial.emissiveIntensity = 2.8;
-    wireframeMaterial.metallic = 0.98;
-    wireframeMaterial.roughness = 0.05;
-    wireframeMaterial.wireframe = true;
-    wireframeMaterial.alpha = 1.0;
-    wireframeSphere.material = wireframeMaterial;
-
-    const observer = scene.onBeforeRenderObservable.add(() => {
-      if (innerSphere.isDisposed() || wireframeSphere.isDisposed()) {
-        scene.onBeforeRenderObservable.remove(observer);
-        return;
-      }
-      const time = performance.now() * 0.001;
-      const phaseOffset = (index % 10) * 0.5;
-      const scale = 1 + Math.sin(time * 2 + phaseOffset) * 0.15;
-      innerSphere.scaling.setAll(scale);
-      wireframeSphere.scaling.setAll(scale);
-      innerSphere.rotation.y += 0.005;
-      wireframeSphere.rotation.y += 0.005;
-    });
-
-    if (onNodeClick) {
-      wireframeSphere.actionManager = new ActionManager(scene);
-      wireframeSphere.actionManager.registerAction(
-        new ExecuteCodeAction(
-          ActionManager.OnPickTrigger,
-          () => {
-            const camera = scene.activeCamera as ArcRotateCamera;
-            if (camera) {
-              camera.setTarget(wireframeSphere.position);
-              const distance = Math.max(baseDiameter * 8, 300);
-              Animation.CreateAndStartAnimation(
-                'cameraZoom',
-                camera,
-                'radius',
-                60,
-                30,
-                camera.radius,
-                distance,
-                0
-              );
-            }
-            onNodeClick(node.id);
-          }
-        )
-      );
-    }
-
-    nodeMap.set(node.id, wireframeSphere);
-  });
-
-}
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16) / 255,
-        g: parseInt(result[2], 16) / 255,
-        b: parseInt(result[3], 16) / 255
-      }
-    : { r: 0, g: 1, b: 1 };
-}
